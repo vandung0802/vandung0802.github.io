@@ -10,8 +10,10 @@ self.addEventListener('message', async function(event) {
       body: JSON.stringify(event.data.payload)
     });
     const data = await resp.json();
-    if (event.source) event.source.postMessage({type: 'OS_REGISTER_RESULT', data: data});
+    const port = event.ports && event.ports[0];
+    if (port) port.postMessage({type: 'OS_REGISTER_RESULT', data: data});
   } catch(e) {
-    if (event.source) event.source.postMessage({type: 'OS_REGISTER_RESULT', error: e.message});
+    const port2 = event.ports && event.ports[0];
+    if (port2) port2.postMessage({type: 'OS_REGISTER_RESULT', error: e.message});
   }
 });
