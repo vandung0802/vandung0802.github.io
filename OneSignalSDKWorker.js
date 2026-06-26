@@ -1,19 +1,30 @@
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// Proxy: page gửi message → SW fetch OneSignal API (bypass SW interception)
-self.addEventListener('message', async function(event) {
-  if (!event.data || event.data.type !== 'OS_REGISTER') return;
-  try {
-    const resp = await fetch('https://api.onesignal.com/api/v1/players', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(event.data.payload)
-    });
-    const data = await resp.json();
-    const port = event.ports && event.ports[0];
-    if (port) port.postMessage({type: 'OS_REGISTER_RESULT', data: data});
-  } catch(e) {
-    const port2 = event.ports && event.ports[0];
-    if (port2) port2.postMessage({type: 'OS_REGISTER_RESULT', error: e.message});
-  }
+firebase.initializeApp({
+  apiKey: "AIzaSyBUy3IMuyXZYN9dkyhrariRD-aPbC0HmT8",
+  authDomain: "duyetchi-pva379.firebaseapp.com",
+  databaseURL: "https://duyetchi-pva379-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "duyetchi-pva379",
+  storageBucket: "duyetchi-pva379.firebasestorage.app",
+  messagingSenderId: "366275914302",
+  appId: "1:366275914302:web:c9d7aefd880fa0985c7f6f"
+});
+
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(function(payload) {
+  const title = payload.notification?.title || 'Duyệt Chi';
+  const body = payload.notification?.body || '';
+  self.registration.showNotification(title, {
+    body: body,
+    icon: 'https://vandung0802.github.io/Duyet-Chi/icon-192.png',
+    badge: 'https://vandung0802.github.io/Duyet-Chi/icon-192.png',
+    data: { url: 'https://vandung0802.github.io/Duyet-Chi/app2.html' }
+  });
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(clients.openWindow('https://vandung0802.github.io/Duyet-Chi/app2.html'));
 });
