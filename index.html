@@ -854,7 +854,7 @@ function attachLongPress(el, getSrc, getDeleteFn){
   const stopIfFired = (e)=>{ if(fired){ e.preventDefault(); e.stopPropagation(); } };
   el.addEventListener('touchstart', (e)=>{ e.preventDefault(); start(e); }, {passive:false});
   el.addEventListener('touchmove', move, {passive:true});
-  el.addEventListener('touchend', (e)=>{ cancel(); stopIfFired(e); });
+  el.addEventListener('touchend', (e)=>{ cancel(); if(fired){ e.preventDefault(); e.stopPropagation(); } else if(!moved){ e.preventDefault(); el.click(); } });
   el.addEventListener('touchcancel', cancel);
   el.addEventListener('mousedown', start);
   el.addEventListener('mousemove', move);
