@@ -1152,8 +1152,7 @@ function checkNotifBanner() {
 function setRole(role){
   currentRole = role;
   const r = ROLES[role]||ROLES.other;
-  const emailLabel = currentUser ? `<span style="font-size:9px;opacity:.75;margin-left:2px">(${currentUser.email})</span>` : '';
-  document.getElementById('role-badge').innerHTML = `<span style="color:${r.color};font-weight:800">${r.icon}</span> ${r.label}${emailLabel}`;
+  document.getElementById('role-badge').innerHTML = `<span style="color:${r.color};font-weight:800">${r.icon}</span> ${r.label}`;
   document.getElementById('role-screen').style.display='none';
   // Đăng ký FCM nếu đã có quyền
   if(typeof Notification !== 'undefined' && Notification.permission === 'granted') {
