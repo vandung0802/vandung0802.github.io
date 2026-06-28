@@ -895,7 +895,7 @@ function compressImage(file){
     r.onload = e=>{
       const img = new Image();
       img.onload = ()=>{
-        const MAX = 1000;
+        const MAX = 800;
         let w = img.naturalWidth, h = img.naturalHeight;
         if(w > MAX || h > MAX){
           if(w > h){ h = Math.round(h * MAX / w); w = MAX; }
@@ -904,7 +904,9 @@ function compressImage(file){
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.65));
+        // WebP nhỏ hơn JPEG ~30-35% cùng chất lượng; fallback sang JPEG nếu không hỗ trợ
+        const webp = canvas.toDataURL('image/webp', 0.75);
+        resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.65));
       };
       img.src = e.target.result;
     };
