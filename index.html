@@ -1017,9 +1017,10 @@ function toggleAuthPass(){
 }
 
 function nameToRole(name){
-  if(name==='Dũng') return 'dung';
-  if(name==='Hiền') return 'hien';
-  if(name==='Trang') return 'trang';
+  const n=(name||'').normalize('NFC').trim();
+  if(n==='Dũng') return 'dung';
+  if(n==='Hiền') return 'hien';
+  if(n==='Trang') return 'trang';
   return 'other';
 }
 
