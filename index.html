@@ -978,11 +978,13 @@ async function imgActionDownload(){
   hideImgActionMenu();
 }
 
+let _sharing = false;
 async function imgActionShare(){
-  if(!imgActionContext) return;
+  if(!imgActionContext || _sharing) return;
+  _sharing = true;
   const src = imgActionContext.src;
   hideImgActionMenu();
-  if(!navigator.share){ showToast('❌ Trình duyệt không hỗ trợ chia sẻ'); return; }
+  if(!navigator.share){ _sharing=false; showToast('❌ Trình duyệt không hỗ trợ chia sẻ'); return; }
   try {
     // Nếu là data URL thì chuyển sang blob để chia sẻ file
     if(src.startsWith('data:')){
@@ -998,6 +1000,8 @@ async function imgActionShare(){
     await navigator.share({url: src.startsWith('data:') ? location.href : src, title:'Ảnh Duyệt Chi'});
   } catch(e){
     if(e.name!=='AbortError') showToast('❌ Không chia sẻ được: '+e.message);
+  } finally {
+    _sharing = false;
   }
 }
 
