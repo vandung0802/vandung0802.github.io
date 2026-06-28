@@ -439,14 +439,12 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
   🔔 Thông báo chưa được bật — Bấm vào đây để bật
 </div>
 <div class="app-header">
-  <div style="display:flex;align-items:center;gap:8px">
-    <div>
-      <h1>Duyệt Chi <span style="font-size:9px;opacity:.6;font-weight:400">v14</span></h1>
-      <div style="font-size:10px;opacity:.8;margin-top:1px" id="header-date">Thứ Tư, 17/06/2026</div>
-    </div>
-    <button onclick="location.reload(true)" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="Tải lại">🔄</button>
+  <div>
+    <h1>Duyệt Chi <span style="font-size:9px;opacity:.6;font-weight:400">v14</span></h1>
+    <div style="font-size:10px;opacity:.8;margin-top:1px" id="header-date">Thứ Tư, 17/06/2026</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px">
+    <button onclick="location.reload(true)" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:32px;height:32px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0" title="Tải lại">🔄</button>
     <div style="position:relative;display:inline-flex">
       <button id="notif-bell" onclick="toggleNotifPanel()" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:34px;height:34px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative" title="Thông báo">🔔</button>
       <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e53e3e;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;text-align:center;line-height:18px;padding:0 4px;pointer-events:none"></span>
