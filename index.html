@@ -1601,7 +1601,21 @@ if ('serviceWorker' in navigator) {
       }
     }
   });
-  navigator.serviceWorker.register('/Duyet-Chi/sw.js').catch(e => console.log('SW register error:', e));
+  navigator.serviceWorker.register('/Duyet-Chi/sw.js').then(reg => {
+    // Khi có SW mới, lắng nghe để tự reload
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'activated') {
+          window.location.reload();
+        }
+      });
+    });
+  }).catch(e => console.log('SW register error:', e));
+  // Lắng nghe lệnh reload từ SW
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data === 'SW_RELOAD') window.location.reload();
+  });
 }
 // Xóa badge khi mở app
 if (navigator.clearAppBadge) navigator.clearAppBadge();
