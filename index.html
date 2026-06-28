@@ -369,8 +369,8 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
         <div class="upload-icon">📸</div>
         <div class="upload-txt">Thêm / Thay ảnh Zalo</div>
         <div class="upload-sub">Có thể chọn nhiều ảnh · Nhấn giữ ảnh để xóa từng cái</div>
-        <div class="upload-sub" style="margin-top:4px;color:var(--blue);font-weight:600">📋 Paste ảnh: Copy ảnh rồi nhấn Ctrl+V (hoặc Paste trên điện thoại)</div>
       </label>
+      <button type="button" onclick="pasteImgFromClipboard('edit')" style="margin-top:6px;width:100%;padding:8px;border:1.5px dashed var(--blue);border-radius:8px;background:#eff6ff;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer">📋 Dán ảnh từ clipboard</button>
       <input type="file" id="edit-file-input" accept="image/*" multiple style="display:none" onchange="handleEditImg(this)">
     </div>
 
@@ -511,8 +511,9 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
           <label class="upload-zone" for="file-input" id="paste-zone" tabindex="0">
             <div class="upload-icon">📸</div>
             <div class="upload-txt">Chọn / Chụp ảnh Zalo</div>
-            <div class="upload-sub">Có thể chọn nhiều ảnh cùng lúc · Máy tính: bấm vào đây rồi Ctrl+V để dán ảnh</div>
+            <div class="upload-sub">Có thể chọn nhiều ảnh cùng lúc</div>
           </label>
+          <button type="button" onclick="pasteImgFromClipboard('add')" style="margin-top:6px;width:100%;padding:8px;border:1.5px dashed var(--blue);border-radius:8px;background:#eff6ff;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer">📋 Dán ảnh từ clipboard</button>
           <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleImg(this)">
         </div>
         <div id="img-preview-wrap" class="img-preview-grid" style="display:none"></div>
@@ -2287,6 +2288,39 @@ function closeEditModal(){
   editingProposalId = null;
   editingImages = [];
   document.getElementById('edit-file-input').value = '';
+}
+
+async function pasteImgFromClipboard(target){
+  if(!navigator.clipboard || !navigator.clipboard.read){
+    showToast('❌ Trình duyệt không hỗ trợ đọc clipboard — hãy dùng Ctrl+V');
+    return;
+  }
+  let items;
+  try { items = await navigator.clipboard.read(); }
+  catch(e){ showToast('❌ Cần cấp quyền clipboard — bấm "Cho phép" khi hỏi'); return; }
+  const blobs=[];
+  for(const item of items){
+    for(const type of item.types){
+      if(type.startsWith('image/')){
+        const blob = await item.getType(type);
+        blobs.push(new File([blob], 'paste.jpg', {type: blob.type||'image/jpeg'}));
+      }
+    }
+  }
+  if(!blobs.length){ showToast('📋 Clipboard không có ảnh — hãy copy ảnh trước'); return; }
+  if(target==='edit'){
+    setZoneLoading('edit-paste-zone', true, blobs.length);
+    let done=0;
+    blobs.forEach(file=>{
+      const path=`duyetchi/img/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+      compressImage(file).then(d=>uploadToStorage(d,path)).then(url=>{
+        editingImages.push(url); done++;
+        if(done===blobs.length){setZoneLoading('edit-paste-zone',false);renderEditImgPreview();showToast(`✅ Đã dán ${done} ảnh`);}
+      }).catch(()=>{done++;if(done===blobs.length)setZoneLoading('edit-paste-zone',false);showToast('❌ Tải ảnh thất bại');});
+    });
+  } else {
+    addImagesToUpload(blobs);
+  }
 }
 
 function setZoneLoading(zoneId, loading, total){
