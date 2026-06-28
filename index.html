@@ -82,7 +82,8 @@ body{font-family:'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 .proposal-img{width:100%;max-height:160px;object-fit:cover;border-top:1px solid var(--gray-border);cursor:pointer;display:block}
 .proof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:4px;padding:6px;border-top:1px solid var(--gray-border);background:#fafafa}
 .proof-thumb{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--gray-border)}
-.proof-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.proof-thumb img{width:100%;height:100%;object-fit:cover;cursor:pointer;display:block;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;draggable:false}
+.proof-thumb{-webkit-user-select:none;user-select:none}
 .proposal-note{font-size:14px;font-weight:600;color:var(--text);margin-top:5px;background:var(--gray-light);padding:5px 8px;border-radius:6px;line-height:1.5;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word}
 .proposal-timeline{font-size:9.5px;color:var(--text-sub);padding:4px 10px;background:#fafafa;border-top:1px solid var(--gray-border);font-weight:600}
 .proposal-timeline-inline{font-size:9.5px;color:var(--text-sub);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
@@ -851,7 +852,7 @@ function attachLongPress(el, getSrc, getDeleteFn){
   // Nếu vừa kích hoạt menu nhấn giữ, chặn sự kiện click/touchend lan ra ngoài
   // để không trigger các onclick khác trên phần tử cha (ví dụ closeImgModal, openImg).
   const stopIfFired = (e)=>{ if(fired){ e.preventDefault(); e.stopPropagation(); } };
-  el.addEventListener('touchstart', start, {passive:true});
+  el.addEventListener('touchstart', (e)=>{ e.preventDefault(); start(e); }, {passive:false});
   el.addEventListener('touchmove', move, {passive:true});
   el.addEventListener('touchend', (e)=>{ cancel(); stopIfFired(e); });
   el.addEventListener('touchcancel', cancel);
@@ -860,7 +861,7 @@ function attachLongPress(el, getSrc, getDeleteFn){
   el.addEventListener('mouseup', (e)=>{ cancel(); stopIfFired(e); });
   el.addEventListener('mouseleave', cancel);
   el.addEventListener('click', (e)=>{ if(fired){ e.preventDefault(); e.stopPropagation(); } }, true);
-  el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); }); // chặn menu chuột phải mặc định trên máy tính
+  el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); e.stopPropagation(); });
 }
 
 function showImgActionMenu(src, deleteFn){
