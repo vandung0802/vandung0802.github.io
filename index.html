@@ -973,21 +973,24 @@ async function imgActionDownload(){
 async function imgActionShare(){
   if(!imgActionContext) return;
   const src = imgActionContext.src;
+  hideImgActionMenu();
+  if(!navigator.share){ showToast('❌ Trình duyệt không hỗ trợ chia sẻ'); return; }
   try {
-    const res = await fetch(src);
-    const blob = await res.blob();
-    const file = new File([blob], 'anh.jpg', {type: blob.type||'image/jpeg'});
-    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'Ảnh Duyệt Chi'});
-    } else if(navigator.share){
-      await navigator.share({url: src, title:'Ảnh Duyệt Chi'});
-    } else {
-      showToast('❌ Trình duyệt không hỗ trợ chia sẻ');
+    // Nếu là data URL thì chuyển sang blob để chia sẻ file
+    if(src.startsWith('data:')){
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const file = new File([blob], 'anh.jpg', {type: blob.type||'image/jpeg'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:'Ảnh Duyệt Chi'});
+        return;
+      }
     }
+    // Firebase URL hoặc không share được file → share link
+    await navigator.share({url: src.startsWith('data:') ? location.href : src, title:'Ảnh Duyệt Chi'});
   } catch(e){
     if(e.name!=='AbortError') showToast('❌ Không chia sẻ được: '+e.message);
   }
-  hideImgActionMenu();
 }
 
 function imgActionDelete(){
