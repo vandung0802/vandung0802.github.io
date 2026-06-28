@@ -955,20 +955,36 @@ async function imgActionCopy(){
   try{
     const blob = await dataUrlToBlob(src);
     let copyBlob = blob;
+    // ClipboardItem chỉ nhận PNG hoặc JPEG
     if(!['image/png','image/jpeg'].includes(blob.type)) copyBlob = await convertBlobToPng(blob);
     if(navigator.clipboard && window.ClipboardItem){
       await navigator.clipboard.write([new ClipboardItem({[copyBlob.type]: copyBlob})]);
-      showToast('📋 Đã sao chép ảnh vào bộ nhớ tạm');
-    } else {
-      showToast('❌ Trình duyệt không hỗ trợ sao chép ảnh');
+      showToast('📋 Đã sao chép ảnh — có thể Ctrl+V / Paste ngay');
+      return;
     }
+    // Clipboard không hỗ trợ ảnh (Android) → tải về để dùng
+    throw new Error('clipboard not supported');
   }catch(err){
-    // CORS chặn → mở ảnh to để user tự copy bằng menu trình duyệt
-    if(src && src.startsWith('http')){
-      window.open(src, '_blank');
-      showToast('📋 Ảnh đã mở — nhấn giữ ảnh rồi chọn "Sao chép ảnh"');
-    } else {
-      showToast('❌ Không sao chép được');
+    // Fallback tuỳ loại src
+    try {
+      const blob = await dataUrlToBlob(src);
+      let copyBlob = blob;
+      if(!['image/png','image/jpeg'].includes(blob.type)) copyBlob = await convertBlobToPng(blob);
+      // Tải về → user dùng từ gallery/Downloads
+      const blobUrl = URL.createObjectURL(copyBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = 'duyet-chi-' + Date.now() + '.jpg';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(blobUrl), 3000);
+      showToast('📥 Ảnh đã tải về — mở từ Thư viện ảnh để dán vào Zalo');
+    } catch(_) {
+      if(src && src.startsWith('http')){
+        window.open(src, '_blank');
+        showToast('📋 Ảnh đã mở — nhấn giữ ảnh rồi chọn "Sao chép ảnh"');
+      } else {
+        showToast('❌ Không sao chép được trên thiết bị này');
+      }
     }
   }
 }
