@@ -1653,7 +1653,7 @@ function closeNotifAndGo(id){
 function matchFilter(p, f){
   switch(f){
     case 'all': return true;
-    case 'pending': return p.status==='pending';
+    case 'pending': return p.status!=='rejected' && p.status!=='transferred';
     case 'd_only': return !!p.approvedD && !p.approvedH && p.status!=='rejected';
     case 'h_only': return !!p.approvedH && !p.approvedD && p.status!=='rejected';
     case 'approved': return !!p.approvedD && !!p.approvedH && p.status!=='rejected'&&p.status!=='transferred';
