@@ -430,6 +430,9 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
     <button class="img-action-btn" onclick="imgActionDownload()">
       <span class="img-action-icon">⬇</span><span>Tải về</span>
     </button>
+    <button class="img-action-btn" onclick="imgActionShare()">
+      <span class="img-action-icon">📤</span><span>Chia sẻ</span>
+    </button>
     <button class="img-action-btn img-action-danger" id="imgActionDelete" onclick="imgActionDelete()">
       <span class="img-action-icon">🗑</span><span>Xóa</span>
     </button>
@@ -964,6 +967,26 @@ function convertBlobToPng(blob){
 async function imgActionDownload(){
   if(!imgActionContext) return;
   await downloadImageDataUrl(imgActionContext.src);
+  hideImgActionMenu();
+}
+
+async function imgActionShare(){
+  if(!imgActionContext) return;
+  const src = imgActionContext.src;
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    const file = new File([blob], 'anh.jpg', {type: blob.type||'image/jpeg'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Ảnh Duyệt Chi'});
+    } else if(navigator.share){
+      await navigator.share({url: src, title:'Ảnh Duyệt Chi'});
+    } else {
+      showToast('❌ Trình duyệt không hỗ trợ chia sẻ');
+    }
+  } catch(e){
+    if(e.name!=='AbortError') showToast('❌ Không chia sẻ được: '+e.message);
+  }
   hideImgActionMenu();
 }
 
