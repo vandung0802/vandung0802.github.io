@@ -2380,11 +2380,10 @@ async function pasteImgFromClipboard(target){
     setZoneLoading('edit-paste-zone', true, blobs.length);
     let done=0;
     blobs.forEach(file=>{
-      const path=`duyetchi/img/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-      compressImage(file).then(d=>uploadToStorage(d,path)).then(url=>{
-        editingImages.push(url); done++;
+      compressImage(file).then(dataUrl=>{
+        editingImages.push(dataUrl); done++;
         if(done===blobs.length){setZoneLoading('edit-paste-zone',false);renderEditImgPreview();showToast(`✅ Đã dán ${done} ảnh`);}
-      }).catch(()=>{done++;if(done===blobs.length)setZoneLoading('edit-paste-zone',false);showToast('❌ Tải ảnh thất bại');});
+      }).catch(()=>{done++;if(done===blobs.length)setZoneLoading('edit-paste-zone',false);showToast('❌ Xử lý ảnh thất bại');});
     });
   } else {
     addImagesToUpload(blobs);
@@ -2416,15 +2415,14 @@ function handleEditImg(input){
   setZoneLoading('edit-paste-zone', true, files.length);
   let done=0;
   files.forEach(file=>{
-    const path = `duyetchi/img/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-    compressImage(file).then(dataUrl=>uploadToStorage(dataUrl, path)).then(url=>{
-      editingImages.push(url);
+    compressImage(file).then(dataUrl=>{
+      editingImages.push(dataUrl);
       done++;
-      if(done===files.length){ setZoneLoading('edit-paste-zone',false); renderEditImgPreview(); showToast(`✅ Đã tải ${done} ảnh lên`); }
+      if(done===files.length){ setZoneLoading('edit-paste-zone',false); renderEditImgPreview(); showToast(`✅ Đã thêm ${done} ảnh`); }
     }).catch(()=>{
       done++;
-      showToast('❌ Tải ảnh lên thất bại');
       if(done===files.length){ setZoneLoading('edit-paste-zone',false); renderEditImgPreview(); }
+      showToast('❌ Xử lý ảnh thất bại');
     });
   });
   input.value='';
@@ -2511,16 +2509,13 @@ function addImagesToUpload(files){
   let done=0;
   validFiles.forEach(file=>{
     _setImgLoading(1);
-    const path = `duyetchi/img/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-    compressImage(file).then(dataUrl=>uploadToStorage(dataUrl, path)).then(url=>{
-      uploadedImages.push(url);
+    compressImage(file).then(dataUrl=>{
+      uploadedImages.push(dataUrl);
       done++; _setImgLoading(-1);
-      if(done===validFiles.length){ setZoneLoading('paste-zone',false); renderUploadPreview(); showToast(`✅ Đã tải ${done} ảnh lên`); }
+      if(done===validFiles.length){ setZoneLoading('paste-zone',false); renderUploadPreview(); showToast(`✅ Đã thêm ${done} ảnh`); }
     }).catch(err=>{
-      console.error('Upload ảnh thất bại:', err);
       done++; _setImgLoading(-1);
-      const msg = err && err.code ? `❌ Lỗi ảnh: ${err.code}` : '❌ Tải ảnh lên thất bại, thử lại';
-      showToast(msg);
+      showToast('❌ Xử lý ảnh thất bại');
       if(done===validFiles.length){ setZoneLoading('paste-zone',false); renderUploadPreview(); }
     });
   });
@@ -2635,12 +2630,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
       setZoneLoading('edit-paste-zone', true, files.length);
       let done=0;
       files.forEach(file=>{
-        const path = `duyetchi/img/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-        compressImage(file).then(dataUrl=>uploadToStorage(dataUrl, path)).then(url=>{
-          editingImages.push(url);
+        compressImage(file).then(dataUrl=>{
+          editingImages.push(dataUrl);
           done++;
           if(done===files.length){ setZoneLoading('edit-paste-zone',false); renderEditImgPreview(); showToast(`✅ Đã dán ${done} ảnh`); }
-        }).catch(()=>{ done++; if(done===files.length) setZoneLoading('edit-paste-zone',false); showToast('❌ Tải ảnh thất bại'); });
+        }).catch(()=>{ done++; if(done===files.length) setZoneLoading('edit-paste-zone',false); showToast('❌ Xử lý ảnh thất bại'); });
       });
     }
   });
@@ -2768,9 +2762,8 @@ function addProofImages(id, files){
   showToast('⏳ Đang tải ảnh chứng từ lên...');
   let done=0;
   validFiles.forEach(file=>{
-    const path = `duyetchi/proof/${id}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-    compressImage(file).then(dataUrl=>uploadToStorage(dataUrl, path)).then(url=>{
-      p.proofImages.push(url);
+    compressImage(file).then(dataUrl=>{
+      p.proofImages.push(dataUrl);
       done++;
       if(done===validFiles.length){
         if(p.status==='approved') p.status='transferred';
@@ -2780,7 +2773,7 @@ function addProofImages(id, files){
       }
     }).catch(()=>{
       done++;
-      showToast('❌ Tải ảnh chứng từ thất bại');
+      showToast('❌ Xử lý ảnh chứng từ thất bại');
       if(done===validFiles.length){ save(); renderAll(); }
     });
   });
