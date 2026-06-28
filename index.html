@@ -1625,7 +1625,16 @@ function priorityBadge(p){
 }
 function prioritySortVal(p){ return PRIORITY_ORDER[p.priority||'normal']??1; }
 
-function renderAll(){ renderProposals(); renderStats(); updateNotifBadge(); }
+let _renderAllTimer = null;
+let _renderAllPending = false;
+function renderAll(){
+  // Nếu modal Sửa đang mở → hoãn render để không lag khi user đang nhập
+  const editOpen = document.getElementById('edit-modal')?.style.display !== 'none';
+  if(editOpen){ _renderAllPending = true; return; }
+  // Debounce 80ms: tránh render liên tục khi Firebase gửi nhiều update liền nhau
+  clearTimeout(_renderAllTimer);
+  _renderAllTimer = setTimeout(()=>{ renderProposals(); renderStats(); updateNotifBadge(); }, 80);
+}
 
 function getMyPendingItems(){
   const items = [];
@@ -1859,12 +1868,12 @@ function renderCard(p){
   const imgImages = Array.isArray(p.imgImages) && p.imgImages.length ? p.imgImages : (p.imgB64 ? [p.imgB64] : []);
   const imgHtml = imgImages.length ? `<div class="proof-grid">${imgImages.map((src,idx)=>`
     <div class="proof-thumb" data-pid="${p.id}" data-kind="img" data-idx="${idx}">
-      <img src="${src}" onclick="openImg('${p.id}','img',${idx})" alt="Ảnh Zalo ${idx+1}">
+      <img src="${src}" loading="lazy" decoding="async" onclick="openImg('${p.id}','img',${idx})" alt="Ảnh Zalo ${idx+1}">
     </div>`).join('')}</div>` : '';
   const proofImages = Array.isArray(p.proofImages) ? p.proofImages : (p.proofB64 ? [p.proofB64] : []);
   const proofHtml = proofImages.length ? `<div class="proof-grid">${proofImages.map((src,idx)=>`
     <div class="proof-thumb" data-pid="${p.id}" data-kind="proof" data-idx="${idx}">
-      <img src="${src}" onclick="openImg('${p.id}','proof',${idx})" alt="Chứng từ ${idx+1}">
+      <img src="${src}" loading="lazy" decoding="async" onclick="openImg('${p.id}','proof',${idx})" alt="Chứng từ ${idx+1}">
     </div>`).join('')}</div>` : '';
   const noteHtml  = p.note     ? `<div class="proposal-note">💬 ${p.note}</div>` : '';
 
@@ -2351,6 +2360,8 @@ function closeEditModal(){
   editingProposalId = null;
   editingImages = [];
   document.getElementById('edit-file-input').value = '';
+  // Nếu có render bị hoãn trong lúc modal mở → render ngay bây giờ
+  if(_renderAllPending){ _renderAllPending = false; renderAll(); }
 }
 
 async function pasteImgFromClipboard(target){
