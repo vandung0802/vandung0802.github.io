@@ -1097,8 +1097,15 @@ function initAuth(){
       currentUser = user;
       const snap = await db.ref('duyetchi/userRoles/'+user.uid).get();
       const role_val = snap.exists() ? snap.val() : null;
-      const role = role_val ? (typeof role_val === 'string' ? role_val : role_val.role) : null;
+      let role = role_val ? (typeof role_val === 'string' ? role_val : role_val.role) : null;
       currentUserName = (role_val && typeof role_val === 'object' && role_val.name) ? role_val.name : '';
+      // Fallback: nếu không có role trong DB, map theo email
+      if(!role || role==='other'){
+        const em = (user.email||'').toLowerCase();
+        if(em==='vandung0802@gmail.com') role='dung';
+        else if(em==='hiensbgt@gmail.com') role='hien';
+        else if(em.includes('trang')) role='trang';
+      }
       document.getElementById('role-screen').style.display='none';
       if(role){
         setRole(role);
