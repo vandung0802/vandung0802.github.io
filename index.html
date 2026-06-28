@@ -3086,25 +3086,39 @@ function setReportTab(tab, btn){
 function renderPersonChips(){ renderReportFilters(); } // compat alias
 
 function jumpToProposal(id){
-  // Chuyển về trang danh sách chính
   const navHome = document.querySelector('.nav-item');
   showPage('home', navHome);
-  // Reset filter về tất cả để chắc chắn hiện card
   filter = 'all';
   document.querySelectorAll('.stat-box').forEach(b=>b.classList.remove('active'));
   const allBox = document.querySelector('.stat-box[data-f="all"]');
   if(allBox) allBox.classList.add('active');
   renderAll();
-  // Scroll đến card và highlight
-  requestAnimationFrame(()=>{
+  // Chờ debounce renderAll (80ms) + render xong → scroll & highlight
+  setTimeout(()=>{
     const card = document.getElementById('card-'+id);
     if(!card) return;
     card.scrollIntoView({behavior:'smooth', block:'center'});
     card.classList.remove('card-highlighted');
-    void card.offsetWidth; // force reflow để restart animation
+    void card.offsetWidth;
     card.classList.add('card-highlighted');
     card.addEventListener('animationend', ()=>card.classList.remove('card-highlighted'), {once:true});
-  });
+  }, 150);
+}
+
+// Double-tap cho mobile trên các hàng report
+function attachReportDoubleTap(container){
+  let lastTap = 0, lastTarget = null;
+  container.addEventListener('touchend', e=>{
+    const row = e.target.closest('.report-row-link');
+    if(!row) return;
+    const now = Date.now();
+    if(now - lastTap < 350 && lastTarget === row){
+      e.preventDefault();
+      const fn = row.getAttribute('ondblclick');
+      if(fn) { const id = fn.match(/'([^']+)'/)?.[1]; if(id) jumpToProposal(id); }
+    }
+    lastTap = now; lastTarget = row;
+  }, {passive:false});
 }
 
 function renderReportFilters(){
@@ -3182,6 +3196,7 @@ function renderReportRejected(){
       </table>
     </div>
   </div>`;
+  attachReportDoubleTap(el);
 }
 
 function renderReportList(){
@@ -3238,6 +3253,7 @@ function renderReportList(){
     top.addEventListener('scroll',()=>{main.scrollLeft=top.scrollLeft;},{passive:true});
     main.addEventListener('scroll',()=>{top.scrollLeft=main.scrollLeft;},{passive:true});
   });
+  attachReportDoubleTap(el);
 }
 
 function renderExcelTable(containerId, items, kind){
@@ -3303,6 +3319,7 @@ function renderExcelTable(containerId, items, kind){
       <span>Tổng cộng: ${sorted.length} khoản</span>
       <span>${fmtVND(totalTransferred)}</span>
     </div>`;
+  attachReportDoubleTap(el);
 }
 
 function renderReportSummary(){
