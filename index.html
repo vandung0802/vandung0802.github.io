@@ -806,8 +806,14 @@ const storage = firebase.storage();
 // Upload ảnh (dataUrl) lên Firebase Storage, trả về download URL
 async function uploadToStorage(dataUrl, storagePath){
   const ref = storage.ref(storagePath);
-  // dùng putString với DATA_URL để tránh lỗi CORS khi fetch blob
-  await ref.putString(dataUrl, 'data_url', { contentType: 'image/jpeg' });
+  // Chuyển base64 → binary blob để upload nhanh hơn ~33%
+  const [header, b64] = dataUrl.split(',');
+  const mime = (header.match(/:(.*?);/)||[])[1]||'image/jpeg';
+  const binary = atob(b64);
+  const arr = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) arr[i]=binary.charCodeAt(i);
+  const blob = new Blob([arr], {type: mime});
+  await ref.put(blob, {contentType: mime});
   return await ref.getDownloadURL();
 }
 let fbConnected = false;
@@ -889,7 +895,7 @@ function compressImage(file){
     r.onload = e=>{
       const img = new Image();
       img.onload = ()=>{
-        const MAX = 1200;
+        const MAX = 1000;
         let w = img.naturalWidth, h = img.naturalHeight;
         if(w > MAX || h > MAX){
           if(w > h){ h = Math.round(h * MAX / w); w = MAX; }
@@ -898,7 +904,7 @@ function compressImage(file){
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.72));
+        resolve(canvas.toDataURL('image/jpeg', 0.65));
       };
       img.src = e.target.result;
     };
