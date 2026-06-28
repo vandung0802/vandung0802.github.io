@@ -415,10 +415,10 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
 <div class="img-modal" id="imgModal" onclick="closeImgModal(event)">
   <span class="img-modal-close">✕</span>
   <button class="img-modal-nav img-modal-prev" onclick="navModalImg(event,-1)" id="imgModalPrev">‹</button>
-  <img id="imgModalSrc" src="" alt="" oncontextmenu="return false">
+  <img id="imgModalSrc" src="" alt="">
   <button class="img-modal-nav img-modal-next" onclick="navModalImg(event,1)" id="imgModalNext">›</button>
   <div class="img-modal-counter" id="imgModalCounter"></div>
-  <div class="img-modal-hint">Nhấn giữ ảnh để copy / tải về / xóa</div>
+  <div class="img-modal-hint" id="imgModalHint">Nhấn giữ ảnh để copy / tải về / xóa</div>
 </div>
 
 <!-- Menu nổi dùng chung: copy / tải về / xóa, hiện khi nhấn giữ vào bất kỳ ảnh nào trong app -->
@@ -979,12 +979,20 @@ async function imgActionCopy(){
       setTimeout(()=>URL.revokeObjectURL(blobUrl), 3000);
       showToast('📥 Ảnh đã tải về — mở từ Thư viện ảnh để dán vào Zalo');
     } catch(_) {
-      if(src && src.startsWith('http')){
-        window.open(src, '_blank');
-        showToast('📋 Ảnh đã mở — nhấn giữ ảnh rồi chọn "Sao chép ảnh"');
-      } else {
-        showToast('❌ Không sao chép được trên thiết bị này');
-      }
+      // Mở ảnh to trong lightbox để user dùng menu trình duyệt copy
+      const modal = document.getElementById('imgModal');
+      const modalImg = document.getElementById('imgModalSrc');
+      const hint = document.getElementById('imgModalHint');
+      const counter = document.getElementById('imgModalCounter');
+      const prev = document.getElementById('imgModalPrev');
+      const next = document.getElementById('imgModalNext');
+      modalImg.src = src;
+      if(hint) hint.textContent = '🖱️ Chuột phải → "Sao chép ảnh"  |  📱 Nhấn giữ → "Sao chép ảnh"';
+      if(counter) counter.style.display='none';
+      if(prev) prev.style.display='none';
+      if(next) next.style.display='none';
+      modal.classList.add('open');
+      showToast('📋 Chuột phải (máy tính) hoặc nhấn giữ (điện thoại) → Sao chép ảnh');
     }
   }
 }
@@ -2753,6 +2761,15 @@ async function downloadImageDataUrl(dataUrl, filename){
 function closeImgModal(event){
   if(event && event.target.tagName==='IMG') return;
   document.getElementById('imgModal').classList.remove('open');
+  // Restore nav/counter/hint về trạng thái mặc định
+  const hint = document.getElementById('imgModalHint');
+  const counter = document.getElementById('imgModalCounter');
+  const prev = document.getElementById('imgModalPrev');
+  const next = document.getElementById('imgModalNext');
+  if(hint) hint.textContent = 'Nhấn giữ ảnh để copy / tải về / xóa';
+  if(counter) counter.style.display='';
+  if(prev) prev.style.display='';
+  if(next) next.style.display='';
 }
 
 let pendingUploadProofId = null; // lưu id phiếu đang chờ upload chứng từ, để hỗ trợ paste ảnh
