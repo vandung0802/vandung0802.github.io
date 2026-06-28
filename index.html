@@ -1911,10 +1911,12 @@ function renderBtnReject(p){
     return `<div class="approve-box ab-done-box" style="border-color:var(--red);background:#fff0f0"><div class="ab-done-btn" style="color:var(--red)">${inner}</div></div>`;
   }
 
+  if(canRejectD && canRejectH)
+    return `<div class="approve-box ab-done-box" style="border-color:#d1d5db"><button class="ab-done-btn" onclick="rejectBy('${p.id}','D')"><div class="ab-row-top"><span class="ab-big-letter" style="color:var(--red)">D, H</span><span class="ab-mid-label" style="color:#1f2937">Từ chối</span></div></button></div>`;
   if(canRejectD)
-    return `<div class="approve-box"><button class="ab-btn ab-btn-reject-outline" onclick="rejectBy('${p.id}','D')"><span style="color:var(--red)">D</span> ✕ Từ chối</button></div>`;
+    return `<div class="approve-box ab-done-box" style="border-color:#d1d5db"><button class="ab-done-btn" onclick="rejectBy('${p.id}','D')"><div class="ab-row-top"><span class="ab-big-letter" style="color:var(--red)">D</span><span class="ab-mid-label" style="color:#1f2937">Từ chối</span></div></button></div>`;
   if(canRejectH)
-    return `<div class="approve-box"><button class="ab-btn ab-btn-reject-outline" onclick="rejectBy('${p.id}','H')"><span style="color:#7c3aed">H</span> ✕ Từ chối</button></div>`;
+    return `<div class="approve-box ab-done-box" style="border-color:#d1d5db"><button class="ab-done-btn" onclick="rejectBy('${p.id}','H')"><div class="ab-row-top"><span class="ab-big-letter" style="color:#7c3aed">H</span><span class="ab-mid-label" style="color:#1f2937">Từ chối</span></div></button></div>`;
   return `<div class="approve-box"><div class="ab-flat-locked" style="font-size:9px">—</div></div>`;
 }
 function renderBtnTransfer(p){
