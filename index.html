@@ -918,7 +918,6 @@ function compressImage(file){
 async function dataUrlToBlob(src){
   if(!src) throw new Error('Không có ảnh');
   if(src.startsWith('data:')){
-    // base64 data URL → decode trực tiếp, không qua fetch
     const [header, b64] = src.split(',');
     const mime = header.match(/:(.*?);/)[1];
     const binary = atob(b64);
@@ -926,10 +925,27 @@ async function dataUrlToBlob(src){
     for(let i=0;i<binary.length;i++) arr[i]=binary.charCodeAt(i);
     return new Blob([arr], {type: mime});
   }
-  // URL thường → fetch
-  const res = await fetch(src);
-  if(!res.ok) throw new Error('Tải ảnh thất bại');
-  return await res.blob();
+  // HTTP URL: thử fetch trước, nếu bị CORS thì load qua <img> + canvas
+  try {
+    const res = await fetch(src, {mode:'cors'});
+    if(!res.ok) throw new Error('fetch failed');
+    return await res.blob();
+  } catch(_) {
+    // CORS fallback: load qua Image element rồi vẽ lên canvas
+    return await new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = ()=>{
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        try { c.toBlob(b=>b ? resolve(b) : reject(new Error('canvas tainted')), 'image/jpeg', 0.9); }
+        catch(e){ reject(e); }
+      };
+      img.onerror = ()=>reject(new Error('load failed'));
+      img.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    });
+  }
 }
 
 async function imgActionCopy(){
@@ -949,7 +965,16 @@ async function imgActionCopy(){
       showToast('❌ Trình duyệt này không hỗ trợ sao chép ảnh');
     }
   }catch(err){
-    showToast('❌ Không sao chép được: ' + (err.message||'lỗi'));
+    // Fallback: nếu không lấy được blob thì copy link ảnh
+    const src = imgActionContext?.src;
+    if(src && src.startsWith('http') && navigator.clipboard){
+      try{
+        await navigator.clipboard.writeText(src);
+        showToast('🔗 Đã sao chép link ảnh (không thể sao chép file do giới hạn bảo mật)');
+      }catch(_){ showToast('❌ Không sao chép được'); }
+    } else {
+      showToast('❌ Không sao chép được: ' + (err.message||'lỗi'));
+    }
   }
   hideImgActionMenu();
 }
@@ -2700,7 +2725,13 @@ async function downloadImageDataUrl(dataUrl, filename){
     showToast('⬇ Đã tải ảnh — kiểm tra thư mục Tải xuống / Ảnh trên máy');
 
   }catch(err){
-    showToast('❌ Không tải được ảnh: ' + (err.message||'lỗi'));
+    // CORS hoàn toàn chặn → mở ảnh trong tab mới để user tự lưu
+    if(dataUrl && dataUrl.startsWith('http')){
+      window.open(dataUrl, '_blank');
+      showToast('📂 Đã mở ảnh — nhấn giữ ảnh rồi chọn "Lưu ảnh" để tải về');
+    } else {
+      showToast('❌ Không tải được ảnh: ' + (err.message||'lỗi'));
+    }
   }
 }
 
