@@ -950,33 +950,27 @@ async function dataUrlToBlob(src){
 
 async function imgActionCopy(){
   if(!imgActionContext) return;
+  const src = imgActionContext.src;
+  hideImgActionMenu();
   try{
-    const blob = await dataUrlToBlob(imgActionContext.src);
+    const blob = await dataUrlToBlob(src);
+    let copyBlob = blob;
+    if(!['image/png','image/jpeg'].includes(blob.type)) copyBlob = await convertBlobToPng(blob);
     if(navigator.clipboard && window.ClipboardItem){
-      // Đảm bảo mime là image/png hoặc image/jpeg (ClipboardItem chỉ nhận 2 loại này)
-      let copyBlob = blob;
-      if(!['image/png','image/jpeg'].includes(blob.type)){
-        // Chuyển sang PNG qua canvas
-        copyBlob = await convertBlobToPng(blob);
-      }
       await navigator.clipboard.write([new ClipboardItem({[copyBlob.type]: copyBlob})]);
-      showToast('📋 Đã sao chép ảnh');
+      showToast('📋 Đã sao chép ảnh vào bộ nhớ tạm');
     } else {
-      showToast('❌ Trình duyệt này không hỗ trợ sao chép ảnh');
+      showToast('❌ Trình duyệt không hỗ trợ sao chép ảnh');
     }
   }catch(err){
-    // Fallback: nếu không lấy được blob thì copy link ảnh
-    const src = imgActionContext?.src;
-    if(src && src.startsWith('http') && navigator.clipboard){
-      try{
-        await navigator.clipboard.writeText(src);
-        showToast('🔗 Đã sao chép link ảnh (không thể sao chép file do giới hạn bảo mật)');
-      }catch(_){ showToast('❌ Không sao chép được'); }
+    // CORS chặn → mở ảnh to để user tự copy bằng menu trình duyệt
+    if(src && src.startsWith('http')){
+      window.open(src, '_blank');
+      showToast('📋 Ảnh đã mở — nhấn giữ ảnh rồi chọn "Sao chép ảnh"');
     } else {
-      showToast('❌ Không sao chép được: ' + (err.message||'lỗi'));
+      showToast('❌ Không sao chép được');
     }
   }
-  hideImgActionMenu();
 }
 
 // Chuyển blob bất kỳ sang PNG qua canvas
@@ -2736,10 +2730,10 @@ async function downloadImageDataUrl(dataUrl, filename){
     showToast('⬇ Đã tải ảnh — kiểm tra thư mục Tải xuống / Ảnh trên máy');
 
   }catch(err){
-    // CORS hoàn toàn chặn → mở ảnh trong tab mới để user tự lưu
+    // CORS chặn → mở ảnh trong tab mới, user dùng menu trình duyệt để lưu
     if(dataUrl && dataUrl.startsWith('http')){
       window.open(dataUrl, '_blank');
-      showToast('📂 Đã mở ảnh — nhấn giữ ảnh rồi chọn "Lưu ảnh" để tải về');
+      showToast('📥 Ảnh đã mở — nhấn giữ ảnh rồi chọn "Lưu ảnh" / "Tải xuống"');
     } else {
       showToast('❌ Không tải được ảnh: ' + (err.message||'lỗi'));
     }
