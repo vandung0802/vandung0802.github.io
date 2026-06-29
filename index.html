@@ -287,6 +287,19 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
   </div>
 </div>
 
+<!-- OTP VERIFY SCREEN — sau đăng ký lần đầu -->
+<div id="otp-screen" style="display:none;position:fixed;inset:0;background:#6b3fd4;z-index:10003;align-items:center;justify-content:center;padding:24px;flex-direction:column">
+  <div style="font-size:48px;margin-bottom:12px">🔐</div>
+  <div style="color:#fff;font-size:18px;font-weight:800;margin-bottom:6px;text-align:center">Xác nhận đăng ký</div>
+  <div style="color:rgba(255,255,255,0.8);font-size:13px;margin-bottom:20px;text-align:center">Mã 6 số đã gửi về điện thoại Dũng.<br>Liên hệ Dũng để lấy mã.</div>
+  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:320px">
+    <input id="otp-input" class="form-input" placeholder="Nhập mã 6 số" inputmode="numeric" maxlength="6" style="font-size:22px;letter-spacing:8px;text-align:center;margin-bottom:10px">
+    <div id="otp-error" style="color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px;text-align:center"></div>
+    <button onclick="verifyOtp()" class="btn-full btn-primary-full" id="otp-btn" style="font-size:15px;padding:12px">Xác nhận</button>
+    <button onclick="cancelOtp()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--gray);font-size:12px;cursor:pointer;padding:4px">Hủy / Đăng xuất</button>
+  </div>
+</div>
+
 <!-- LOGIN SCREEN — Firebase Auth -->
 <div class="role-screen" id="role-screen">
   <div style="font-size:48px;margin-bottom:12px">📋</div>
@@ -644,9 +657,15 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
     <div class="card-header">🔐 Tài khoản</div>
     <div class="card-body">
       <div id="auth-account-info" style="font-size:13px;color:var(--text-sub);margin-bottom:12px"></div>
-      <div id="admin-reset-section" style="display:none;margin-bottom:12px;padding:10px;background:#fde8e8;border-radius:8px">
-        <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:6px">⚠️ Chỉ dành cho Admin (D)</div>
-        <button onclick="adminResetAllRoles()" style="width:100%;padding:8px;font-size:13px;background:var(--red);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">🗑 Xóa toàn bộ dữ liệu đăng nhập (userRoles)</button>
+      <div id="admin-reset-section" style="display:none;margin-bottom:12px">
+        <div style="padding:10px;background:#e8f5e9;border-radius:8px;margin-bottom:8px">
+          <div style="font-size:12px;color:#1b5e20;font-weight:700;margin-bottom:8px">🟢 Đang online</div>
+          <div id="online-users-list" style="font-size:13px;color:var(--text)">Đang tải...</div>
+        </div>
+        <div style="padding:10px;background:#fde8e8;border-radius:8px">
+          <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:6px">⚠️ Chỉ dành cho Admin (D)</div>
+          <button onclick="adminResetAllRoles()" style="width:100%;padding:8px;font-size:13px;background:var(--red);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">🗑 Xóa toàn bộ dữ liệu đăng nhập (userRoles)</button>
+        </div>
       </div>
       <details style="margin-bottom:10px">
         <summary style="font-size:13px;font-weight:600;cursor:pointer;color:var(--blue)">Cập nhật tên &amp; vai trò</summary>
@@ -1127,7 +1146,13 @@ async function doRegister(){
     const role = nameToRole(name);
     // Lưu tên + role vào Firebase theo UID
     await db.ref('duyetchi/userRoles/'+cred.user.uid).set({ role, name });
-    // onAuthStateChanged sẽ setRole tiếp
+    // Tạo OTP 6 số, lưu DB, gửi push về Dũng
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    await db.ref('duyetchi/pendingOtp/'+cred.user.uid).set({ otp, name, ts: Date.now() });
+    await sendPushNotif(`🔐 Đăng ký mới: ${name}`, `Mã xác nhận: ${otp}`, ['dung']);
+    // Hiện màn hình nhập OTP
+    showOtpScreen(cred.user.uid, name);
+    btn.disabled = false; btn.textContent = 'Đăng ký';
   } catch(e) {
     let msg = 'Đăng ký thất bại';
     if(e.code==='auth/email-already-in-use') msg='Email này đã được đăng ký';
@@ -1173,6 +1198,90 @@ async function doForgotPass(){
   }
 }
 
+// ── OTP ──
+let _otpUid = null;
+
+function showOtpScreen(uid, name){
+  _otpUid = uid;
+  document.getElementById('role-screen').style.display='none';
+  const scr = document.getElementById('otp-screen');
+  scr.style.display='flex';
+  document.getElementById('otp-input').value='';
+  document.getElementById('otp-error').textContent='';
+  document.getElementById('otp-btn').disabled=false;
+  document.getElementById('otp-btn').textContent='Xác nhận';
+}
+
+async function verifyOtp(){
+  if(!_otpUid) return;
+  const code = document.getElementById('otp-input').value.trim();
+  const errEl = document.getElementById('otp-error');
+  const btn = document.getElementById('otp-btn');
+  if(code.length !== 6){ errEl.textContent='Nhập đủ 6 số'; return; }
+  btn.disabled=true; btn.textContent='⏳ Đang kiểm tra...';
+  const snap = await db.ref('duyetchi/pendingOtp/'+_otpUid).get();
+  if(!snap.exists()){
+    errEl.textContent='Mã không hợp lệ hoặc đã hết hạn'; btn.disabled=false; btn.textContent='Xác nhận'; return;
+  }
+  const { otp, ts } = snap.val();
+  if(Date.now() - ts > 15*60*1000){
+    await db.ref('duyetchi/pendingOtp/'+_otpUid).remove();
+    errEl.textContent='Mã đã hết hạn (15 phút). Vui lòng đăng ký lại.'; btn.disabled=false; btn.textContent='Xác nhận'; return;
+  }
+  if(code !== otp){
+    errEl.textContent='Sai mã. Liên hệ Dũng để lấy lại mã.'; btn.disabled=false; btn.textContent='Xác nhận'; return;
+  }
+  // OTP đúng → xóa pending, tiếp tục vào app
+  await db.ref('duyetchi/pendingOtp/'+_otpUid).remove();
+  document.getElementById('otp-screen').style.display='none';
+  _otpUid = null;
+  // Trigger lại auth flow
+  const user = firebase.auth().currentUser;
+  if(user) firebase.auth().onAuthStateChanged(()=>{});
+  // Re-run setRole manually
+  const roleSnap = await db.ref('duyetchi/userRoles/'+user.uid).get();
+  const rv = roleSnap.exists() ? roleSnap.val() : null;
+  let role = rv ? (typeof rv==='string'?rv:rv.role) : null;
+  currentUserName = (rv && typeof rv==='object' && rv.name) ? rv.name : '';
+  if(!role){ const em=(user.email||'').toLowerCase(); if(em==='vandung0802@gmail.com') role='dung'; }
+  if(role){ setRole(role); trackOnline(user.uid, currentUserName||user.email, role); }
+}
+
+async function cancelOtp(){
+  await firebase.auth().signOut();
+  _otpUid = null;
+  document.getElementById('otp-screen').style.display='none';
+}
+
+// ── ONLINE PRESENCE ──
+function trackOnline(uid, name, role){
+  const ref = db.ref('duyetchi/online/'+uid);
+  const data = { name, role, since: Date.now() };
+  ref.set(data);
+  ref.onDisconnect().remove();
+  // Cập nhật lastSeen mỗi 60 giây
+  setInterval(()=>{ ref.update({ lastSeen: Date.now() }); }, 60000);
+  // Nếu là Dũng thì lắng nghe danh sách online
+  if(role==='dung') listenOnlineUsers();
+}
+
+function listenOnlineUsers(){
+  db.ref('duyetchi/online').on('value', snap=>{
+    const el = document.getElementById('online-users-list');
+    if(!el) return;
+    if(!snap.exists()){ el.innerHTML='<span style="color:var(--text-sub)">Không có ai đang online</span>'; return; }
+    const users = snap.val();
+    const ROLE_LABEL = {dung:'Dũng',hien:'Hiền',trang:'Trang',other:'Khác'};
+    const ROLE_COLOR = {dung:'var(--blue)',hien:'#7c3aed',trang:'var(--yellow)',other:'var(--gray)'};
+    el.innerHTML = Object.values(users).map(u=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--gray-border)">
+        <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
+        <span style="font-weight:700;color:${ROLE_COLOR[u.role]||'var(--text)'}">${u.name||ROLE_LABEL[u.role]||u.role}</span>
+        <span style="font-size:11px;color:var(--text-sub);margin-left:auto">${new Date(u.since).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</span>
+      </div>`).join('');
+  });
+}
+
 
 let currentUserName = ''; // tên người dùng theo danh sách persons
 
@@ -1180,11 +1289,17 @@ function initAuth(){
   firebase.auth().onAuthStateChanged(async user=>{
     if(user){
       currentUser = user;
+      // Kiểm tra còn chờ OTP không
+      const otpSnap = await db.ref('duyetchi/pendingOtp/'+user.uid).get();
+      if(otpSnap.exists()){
+        const { name } = otpSnap.val();
+        showOtpScreen(user.uid, name);
+        return;
+      }
       const snap = await db.ref('duyetchi/userRoles/'+user.uid).get();
       const role_val = snap.exists() ? snap.val() : null;
       let role = role_val ? (typeof role_val === 'string' ? role_val : role_val.role) : null;
       currentUserName = (role_val && typeof role_val === 'object' && role_val.name) ? role_val.name : '';
-      // Fallback: nếu không có role trong DB, map theo email
       if(!role || role==='other'){
         const em = (user.email||'').toLowerCase();
         if(em==='vandung0802@gmail.com') role='dung';
@@ -1194,14 +1309,15 @@ function initAuth(){
       document.getElementById('role-screen').style.display='none';
       if(role){
         setRole(role);
+        trackOnline(user.uid, currentUserName||user.email, role);
       } else {
-        // Chưa có role → hiện popup chọn tên ngay sau đăng nhập
         showUpdateRolePrompt();
       }
     } else {
       currentUser = null;
       currentRole = '';
       currentUserName = '';
+      document.getElementById('otp-screen').style.display='none';
       document.getElementById('role-screen').style.display='flex';
       const btn = document.getElementById('auth-btn');
       if(btn){ btn.disabled=false; btn.textContent='Đăng nhập'; }
@@ -1209,6 +1325,7 @@ function initAuth(){
   });
   document.getElementById('auth-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
   document.getElementById('auth-email').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('auth-pass').focus(); });
+  document.getElementById('otp-input').addEventListener('keydown', e=>{ if(e.key==='Enter') verifyOtp(); });
 }
 
 
