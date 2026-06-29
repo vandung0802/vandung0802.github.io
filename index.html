@@ -1254,10 +1254,11 @@ async function cancelOtp(){
 // ── ONLINE PRESENCE ──
 function trackOnline(uid, name, role){
   const ref = db.ref('duyetchi/online/'+uid);
-  const data = { name, role, since: Date.now() };
-  ref.set(data);
+  const ROLE_LABEL = {dung:'Dũng',hien:'Hiền',trang:'Trang',other:'Khác'};
+  const displayName = (name && name !== 'undefined') ? name : (ROLE_LABEL[role] || role || 'Ẩn danh');
+  const since = Date.now();
+  ref.set({ name: displayName, role: role||'other', since });
   ref.onDisconnect().remove();
-  // Cập nhật lastSeen mỗi 60 giây
   setInterval(()=>{ ref.update({ lastSeen: Date.now() }); }, 60000);
   listenOnlineUsers();
 }
@@ -1267,15 +1268,19 @@ function listenOnlineUsers(){
     const el = document.getElementById('online-users-list');
     if(!el) return;
     if(!snap.exists()){ el.innerHTML='<span style="color:var(--text-sub)">Không có ai đang online</span>'; return; }
-    const users = snap.val();
     const ROLE_LABEL = {dung:'Dũng',hien:'Hiền',trang:'Trang',other:'Khác'};
-    const ROLE_COLOR = {dung:'var(--blue)',hien:'#7c3aed',trang:'var(--yellow)',other:'var(--gray)'};
-    el.innerHTML = Object.values(users).map(u=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--gray-border)">
-        <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
-        <span style="font-weight:700;color:${ROLE_COLOR[u.role]||'var(--text)'}">${u.name||ROLE_LABEL[u.role]||u.role}</span>
-        <span style="font-size:11px;color:var(--text-sub);margin-left:auto">${new Date(u.since).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</span>
-      </div>`).join('');
+    const ROLE_COLOR = {dung:'var(--blue)',hien:'#7c3aed',trang:'#d97706',other:'var(--gray)'};
+    const users = Object.values(snap.val()).filter(u=>u && u.role);
+    if(!users.length){ el.innerHTML='<span style="color:var(--text-sub)">Không có ai đang online</span>'; return; }
+    el.innerHTML = users.map(u=>{
+      const nm = (u.name && u.name!=='undefined') ? u.name : (ROLE_LABEL[u.role]||u.role);
+      const ts = typeof u.since==='number' ? new Date(u.since).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) : '--:--';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--gray-border)">
+        <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;display:inline-block"></span>
+        <span style="font-weight:700;color:${ROLE_COLOR[u.role]||'var(--text)'}">${nm}</span>
+        <span style="font-size:11px;color:var(--text-sub);margin-left:auto">vào lúc ${ts}</span>
+      </div>`;
+    }).join('');
   });
 }
 
