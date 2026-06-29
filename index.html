@@ -1796,7 +1796,12 @@ function showPage(pg, btn){
   if(btn) btn.classList.add('active');
   if(pg==='add') populateSelects();
   if(pg==='settings') renderSettings();
-  if(pg==='report'){ renderReportFilters(); renderReportSummary(); renderReportTables(); }
+  if(pg==='report'){
+    renderReportFilters();
+    renderReportSummary(); // tóm tắt hiện ngay
+    // Bảng nặng defer sang frame sau để không block UI
+    requestAnimationFrame(()=>{ renderReportRejected(); renderReportList(); renderReportTables(); });
+  }
 }
 
 // ── RENDER ALL ──
@@ -3489,7 +3494,6 @@ function renderExcelTable(containerId, items, kind){
 }
 
 function renderReportSummary(){
-  renderReportFilters();
   const el = document.getElementById('report-summary-content');
   if(!el) return;
   const fp = getFilteredProposals();
