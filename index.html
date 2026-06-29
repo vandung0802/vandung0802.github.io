@@ -305,15 +305,15 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
   <div style="font-size:48px;margin-bottom:12px">📋</div>
   <h2>Duyệt Chi</h2>
   <p style="margin-bottom:20px">PVA - 379</p>
-  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:320px">
+  <form id="auth-form" autocomplete="on" onsubmit="return false" style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:320px">
     <!-- Tab switch -->
     <div style="display:flex;border-bottom:2px solid var(--gray-border);margin-bottom:16px">
       <button id="auth-tab-login" onclick="switchAuthTab('login')" style="flex:1;background:none;border:none;padding:8px 0;font-size:14px;font-weight:700;color:var(--blue);border-bottom:2px solid var(--blue);margin-bottom:-2px;cursor:pointer">Đăng nhập</button>
       <button id="auth-tab-register" onclick="switchAuthTab('register')" style="flex:1;background:none;border:none;padding:8px 0;font-size:14px;font-weight:600;color:var(--gray);cursor:pointer">Đăng ký</button>
     </div>
-    <input type="email" id="auth-email" class="form-input" placeholder="Email" autocomplete="email" style="margin-bottom:10px;font-size:15px">
+    <input type="email" id="auth-email" name="email" class="form-input" placeholder="Email" autocomplete="email" style="margin-bottom:10px;font-size:15px">
     <div style="position:relative;margin-bottom:10px">
-      <input type="password" id="auth-pass" class="form-input" placeholder="Mật khẩu" autocomplete="current-password" style="font-size:15px;padding-right:40px">
+      <input type="password" id="auth-pass" name="password" class="form-input" placeholder="Mật khẩu" autocomplete="current-password" style="font-size:15px;padding-right:40px">
       <button type="button" onclick="toggleAuthPass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--gray);padding:4px" id="auth-pass-eye">👁</button>
     </div>
     <!-- Chọn tên — chỉ hiện khi đăng ký -->
@@ -327,9 +327,9 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
       <input type="password" id="auth-pass-confirm" class="form-input" placeholder="Nhập lại mật khẩu" style="font-size:15px">
     </div>
     <div id="auth-error" style="color:var(--red);font-size:12px;margin-top:4px;min-height:16px;text-align:center"></div>
-    <button id="auth-btn" class="btn-full btn-primary-full" style="margin-top:10px" onclick="doLogin()">Đăng nhập</button>
-    <button id="auth-forgot" onclick="doForgotPass()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;padding:4px">Quên mật khẩu?</button>
-  </div>
+    <button id="auth-btn" type="submit" class="btn-full btn-primary-full" style="margin-top:10px" onclick="doLogin()">Đăng nhập</button>
+    <button id="auth-forgot" type="button" onclick="doForgotPass()" style="margin-top:8px;width:100%;background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;padding:4px">Quên mật khẩu?</button>
+  </form>
 </div>
 
 
@@ -1291,14 +1291,24 @@ function initAuth(){
   firebase.auth().onAuthStateChanged(async user=>{
     if(user){
       currentUser = user;
-      // Kiểm tra còn chờ OTP không
-      const otpSnap = await db.ref('duyetchi/pendingOtp/'+user.uid).get();
+      // Dùng cache để vào app ngay, đồng thời fetch Firebase song song
+      const cached = localStorage.getItem('dc_role_'+user.uid);
+      if(cached){
+        try {
+          const { role, name } = JSON.parse(cached);
+          if(role){ currentUserName = name||''; setRole(role); trackOnline(user.uid, name||user.email, role); }
+        } catch(e){}
+      }
+      // Fetch OTP + userRoles song song
+      const [otpSnap, snap] = await Promise.all([
+        db.ref('duyetchi/pendingOtp/'+user.uid).get(),
+        db.ref('duyetchi/userRoles/'+user.uid).get()
+      ]);
       if(otpSnap.exists()){
         const { name } = otpSnap.val();
         showOtpScreen(user.uid, name);
         return;
       }
-      const snap = await db.ref('duyetchi/userRoles/'+user.uid).get();
       const role_val = snap.exists() ? snap.val() : null;
       let role = role_val ? (typeof role_val === 'string' ? role_val : role_val.role) : null;
       currentUserName = (role_val && typeof role_val === 'object' && role_val.name) ? role_val.name : '';
@@ -1310,6 +1320,8 @@ function initAuth(){
       }
       document.getElementById('role-screen').style.display='none';
       if(role){
+        // Lưu cache
+        localStorage.setItem('dc_role_'+user.uid, JSON.stringify({ role, name: currentUserName }));
         setRole(role);
         trackOnline(user.uid, currentUserName||user.email, role);
       } else {
