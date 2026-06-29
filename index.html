@@ -613,7 +613,7 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
   <!-- Tab con: Tóm tắt -->
   <div class="card report-tab-panel" id="report-tab-summary">
     <div class="card-body" style="padding:0">
-      <div id="report-summary-content"></div>
+      <div id="report-summary-content" style="max-height:calc(100vh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
       <div style="padding:12px 12px 4px">
         <button class="btn-full btn-outline-full" onclick="copyReport()" style="margin-top:4px">📋 Sao chép gửi Zalo</button>
       </div>
@@ -623,28 +623,28 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
   <!-- Tab con: Danh sách tất cả -->
   <div class="card report-tab-panel" id="report-tab-list" style="display:none">
     <div class="card-body" style="padding:0">
-      <div id="report-table-list"></div>
+      <div id="report-table-list" style="max-height:calc(100vh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     </div>
   </div>
 
   <!-- Tab con: Đã chuyển (bảng) -->
   <div class="card report-tab-panel" id="report-tab-done" style="display:none">
     <div class="card-body" style="padding:0">
-      <div id="report-table-done"></div>
+      <div id="report-table-done" style="max-height:calc(100vh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     </div>
   </div>
 
   <!-- Tab con: Chưa chuyển (bảng) -->
   <div class="card report-tab-panel" id="report-tab-pending" style="display:none">
     <div class="card-body" style="padding:0">
-      <div id="report-table-pending"></div>
+      <div id="report-table-pending" style="max-height:calc(100vh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     </div>
   </div>
 
   <!-- Tab con: Từ chối -->
   <div class="card report-tab-panel" id="report-tab-rejected" style="display:none">
     <div class="card-body" style="padding:0">
-      <div id="report-table-rejected"></div>
+      <div id="report-table-rejected" style="max-height:calc(100vh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     </div>
   </div>
 </div>
