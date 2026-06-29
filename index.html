@@ -1482,6 +1482,11 @@ function updateNotifSettingsStatus() {
 
 async function sendPushNotif(title, body, targetRoles) {
   if(!Array.isArray(targetRoles) || targetRoles.length === 0) return;
+  // Dedup: không gửi lại cùng 1 nội dung trong vòng 10 giây
+  const key = 'dc_notif_' + btoa(unescape(encodeURIComponent(title + body))).substring(0, 20);
+  const last = parseInt(localStorage.getItem(key) || '0');
+  if(Date.now() - last < 10000) return;
+  localStorage.setItem(key, Date.now());
   try {
     await db.ref('push-queue').push({ title, body, roles: targetRoles, ts: Date.now() });
   } catch(e) {
@@ -1748,13 +1753,21 @@ if ('serviceWorker' in navigator) {
     if (e.data === 'SW_RELOAD') window.location.reload();
   });
 }
-// Xóa badge khi mở app
-if (navigator.clearAppBadge) navigator.clearAppBadge();
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.ready.then(reg => {
-    if (reg.active) reg.active.postMessage('CLEAR_BADGE');
-  });
+// Xóa badge + đóng hết notification cũ khi mở/quay lại app
+function clearAllNotifs(){
+  if (navigator.clearAppBadge) navigator.clearAppBadge();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg.active) reg.active.postMessage('CLEAR_BADGE');
+      // Đóng hết notification đang hiện trong notification center
+      reg.getNotifications().then(notifs => notifs.forEach(n => n.close())).catch(()=>{});
+    });
+  }
 }
+clearAllNotifs();
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') clearAllNotifs();
+});
 
 // ── INIT ──
 document.addEventListener('DOMContentLoaded',()=>{
