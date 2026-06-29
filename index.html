@@ -1584,104 +1584,104 @@ function pushToFirebase(){
 }
 
 function initFirebaseSync(){
-  // Theo dõi kết nối nhanh qua .info/connected — phản hồi ngay khi online/offline
   db.ref('.info/connected').on('value', snap=>{
-    if(snap.val()===true){
-      fbConnected=true; updateFbBadge(true);
-    } else {
-      if(fbConnected){ fbConnected=false; updateFbBadge(false); }
-    }
+    if(snap.val()===true){ fbConnected=true; updateFbBadge(true); }
+    else { if(fbConnected){ fbConnected=false; updateFbBadge(false); } }
   });
-  const ref = db.ref('duyetchi');
-  ref.on('value', (snapshot)=>{
-    fbConnected = true;
-    updateFbBadge(true);
-    const data = snapshot.val();
 
-    if(data && Array.isArray(data.proposals)){
-      // ── DỮ LIỆU CŨ (1 node duy nhất, ảnh kèm thẳng trong proposals) ──
-      // Phát hiện cấu trúc cũ → nạp về local bình thường, sau đó tự động
-      // chuyển sang cấu trúc mới (tách node) ngay trong lần ghi tiếp theo.
-      proposals = data.proposals || [];
-      persons   = data.persons   || [];
-      sites     = data.sites     || [];
-      if(data.sheetUrl){
-        sheetUrl = data.sheetUrl;
-        localStorage.setItem('dc_sheetUrl', sheetUrl);
-        const inp = document.getElementById('inp-sheet-url');
-        if(inp) inp.value = sheetUrl;
-      }
-      localStorage.setItem('dc_proposals', JSON.stringify(proposals));
-      localStorage.setItem('dc_persons',   JSON.stringify(persons));
-      localStorage.setItem('dc_sites',     JSON.stringify(sites));
-      migrateAmountsToVND();
-      fbInitialLoadDone = true;
-      renderAll();
-      if(document.getElementById('page-settings').style.display!=='none') renderSettings();
-      if(document.getElementById('page-report').style.display!=='none'){ renderReportFilters(); renderReportSummary(); renderReportTables(); }
-      // Chuyển đổi sang cấu trúc mới ngay (tách node), rồi xóa node cũ để giải phóng dung lượng.
-      showToast('🔄 Đang nâng cấp cách lưu dữ liệu để ổn định hơn...');
-      pushToFirebase();
-      setTimeout(()=>{
-        db.ref('duyetchi/proposals').set(null);
-        db.ref('duyetchi/persons').set(null);
-        db.ref('duyetchi/sites').set(null);
-        db.ref('duyetchi/sheetUrl').set(null);
-        db.ref('duyetchi/updatedAt').set(null);
-        showToast('✅ Đã nâng cấp xong, dữ liệu vẫn nguyên vẹn.');
-      }, 2000);
-      return;
+  // Tách 3 listener riêng: meta + proposals + images
+  // → khi duyệt phiếu chỉ proposals thay đổi, KHÔNG tải lại ảnh
+  let _metaLoaded=false, _proposalsLoaded=false, _imagesLoaded=false;
+  let _metaData={}, _proposalsData={}, _imagesData={};
+
+  function _mergeAndRender(){
+    if(!_metaLoaded || !_proposalsLoaded) return;
+    fbConnected=true; updateFbBadge(true);
+    const meta = _metaData;
+    persons = meta.persons || [];
+    sites   = meta.sites   || [];
+    if(meta.sheetUrl){
+      sheetUrl = meta.sheetUrl;
+      localStorage.setItem('dc_sheetUrl', sheetUrl);
+      const inp = document.getElementById('inp-sheet-url');
+      if(inp) inp.value = sheetUrl;
     }
+    proposals = Object.keys(_proposalsData).map(id=>{
+      const p = _proposalsData[id];
+      const imgs = _imagesData[id] || {};
+      return {...p, imgImages: imgs.imgImages||[], proofImages: imgs.proofImages||[]};
+    }).sort((a,b)=>b.ts-a.ts);
 
-    if(data && (data.meta || data.proposals)){
-      // ── CẤU TRÚC MỚI (đã tách node: meta / proposals/{id} / images/{id}) ──
-      const meta = data.meta || {};
-      persons = meta.persons || [];
-      sites   = meta.sites   || [];
-      if(meta.sheetUrl){
-        sheetUrl = meta.sheetUrl;
-        localStorage.setItem('dc_sheetUrl', sheetUrl);
-        const inp = document.getElementById('inp-sheet-url');
-        if(inp) inp.value = sheetUrl;
-      }
-      const proposalsObj = data.proposals || {};
-      const imagesObj = data.images || {};
-      proposals = Object.keys(proposalsObj).map(id=>{
-        const p = proposalsObj[id];
-        const imgs = imagesObj[id] || {};
-        return { ...p, imgImages: imgs.imgImages||[], proofImages: imgs.proofImages||[] };
-      }).sort((a,b)=> b.ts - a.ts); // mới nhất lên đầu, giống thứ tự cũ (unshift khi tạo)
+    localStorage.setItem('dc_proposals', JSON.stringify(proposals));
+    localStorage.setItem('dc_persons',   JSON.stringify(persons));
+    localStorage.setItem('dc_sites',     JSON.stringify(sites));
 
-      localStorage.setItem('dc_proposals', JSON.stringify(proposals));
-      localStorage.setItem('dc_persons',   JSON.stringify(persons));
-      localStorage.setItem('dc_sites',     JSON.stringify(sites));
-
-      // Cập nhật "bản đã lưu" để các lần ghi sau so sánh đúng, tránh ghi lại thừa ngay khi vừa tải về
-      const proposalsMap = {}, imagesMap = {};
-      proposals.forEach(p=>{
-        const { imgImages, imgB64, proofImages, proofB64, ...lightFields } = p;
-        proposalsMap[p.id] = JSON.stringify(lightFields);
-        if((imgImages&&imgImages.length) || (proofImages&&proofImages.length)){
-          imagesMap[p.id] = JSON.stringify({imgImages, proofImages});
-        }
-      });
-      lastPushedSnapshot = { meta: JSON.stringify({persons, sites, sheetUrl}), proposalsMap, imagesMap };
-    } else if(!fbInitialLoadDone){
-      // Firebase hoàn toàn rỗng (lần đầu setup) → đẩy dữ liệu local hiện có (nếu có) lên làm gốc
-      pushToFirebase();
-    }
+    const proposalsMap={}, imagesMap={};
+    proposals.forEach(p=>{
+      const {imgImages,imgB64,proofImages,proofB64,...lf}=p;
+      proposalsMap[p.id]=JSON.stringify(lf);
+      if((imgImages&&imgImages.length)||(proofImages&&proofImages.length))
+        imagesMap[p.id]=JSON.stringify({imgImages,proofImages});
+    });
+    lastPushedSnapshot={meta:JSON.stringify({persons,sites,sheetUrl}),proposalsMap,imagesMap};
 
     migrateAmountsToVND();
-    fbInitialLoadDone = true;
+    const wasFirst = !fbInitialLoadDone;
+    fbInitialLoadDone=true;
+    // Firebase rỗng lần đầu → đẩy dữ liệu local lên
+    if(wasFirst && !proposals.length && !persons.length) pushToFirebase();
     renderAll();
     if(document.getElementById('page-settings').style.display!=='none') renderSettings();
     if(document.getElementById('page-report').style.display!=='none'){ renderReportFilters(); renderReportSummary(); renderReportTables(); }
-  }, (err)=>{
-    fbConnected = false;
-    updateFbBadge(false);
-    console.warn('Lỗi kết nối Firebase:', err.message);
-    fbInitialLoadDone = true; // vẫn cho dùng local nếu mất mạng
+  }
+
+  db.ref('duyetchi/meta').on('value', snap=>{
+    _metaData = snap.val() || {};
+    _metaLoaded = true;
+    _mergeAndRender();
   });
+  db.ref('duyetchi/proposals').on('value', snap=>{
+    const raw = snap.val();
+    if(raw && Array.isArray(raw)){
+      // Cấu trúc cũ — xử lý migration
+      _handleOldFormat(raw);
+      return;
+    }
+    _proposalsData = raw || {};
+    _proposalsLoaded = true;
+    _mergeAndRender();
+  });
+  db.ref('duyetchi/images').on('value', snap=>{
+    _imagesData = snap.val() || {};
+    _imagesLoaded = true;
+    _mergeAndRender();
+  }, ()=>{ _imagesLoaded=true; _mergeAndRender(); }); // bỏ qua lỗi ảnh, vẫn render
+
+  // Xử lý dữ liệu cũ (format mảng) — tự migrate lên format mới
+  function _handleOldFormat(oldProposals){
+    const snapshot_combined = { proposals: oldProposals, meta: _metaData };
+    const data = snapshot_combined;
+    proposals = data.proposals || [];
+    persons   = (_metaData.persons) || [];
+    sites     = (_metaData.sites)   || [];
+    localStorage.setItem('dc_proposals', JSON.stringify(proposals));
+    localStorage.setItem('dc_persons',   JSON.stringify(persons));
+    localStorage.setItem('dc_sites',     JSON.stringify(sites));
+    migrateAmountsToVND();
+    fbInitialLoadDone=true;
+    renderAll();
+    showToast('🔄 Đang nâng cấp cách lưu dữ liệu...');
+    pushToFirebase();
+    setTimeout(()=>{
+      db.ref('duyetchi/proposals').set(null);
+      db.ref('duyetchi/persons').set(null);
+      db.ref('duyetchi/sites').set(null);
+      db.ref('duyetchi/sheetUrl').set(null);
+      db.ref('duyetchi/updatedAt').set(null);
+      showToast('✅ Đã nâng cấp xong.');
+    }, 2000);
+  }
+
 }
 
 function updateFbBadge(ok){
