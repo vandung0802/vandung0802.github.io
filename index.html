@@ -3538,7 +3538,7 @@ function renderReportSummary(){
     <table style="width:100%;border-collapse:collapse;background:#fff;table-layout:fixed">
       <colgroup><col style="width:auto"><col style="width:56px"><col style="width:auto"><col style="width:120px"></colgroup>
       <tr style="background:#fdecea"><th style="padding:5px 6px;font-size:14px;color:#1e293b;text-align:left;font-weight:800">Nội dung</th><th style="padding:5px 6px;font-size:14px;color:#1e293b;text-align:left;font-weight:800">Người</th><th style="padding:5px 6px;font-size:14px;color:#1e293b;text-align:left;font-weight:800">Công trình</th><th style="padding:5px 6px;font-size:14px;color:#1e293b;text-align:right;font-weight:800">Số tiền</th></tr>
-      ${urgent.map(p=>`<tr style="border-top:1px solid #fde8e8"><td style="padding:4px 6px;font-size:10px;overflow:hidden;text-overflow:ellipsis">${p.desc||'—'}</td><td style="padding:4px 6px;font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis">${p.person||''}</td><td style="padding:4px 6px;font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis">${p.site||'—'}</td><td style="padding:4px 6px;font-size:11px;font-weight:700;color:#c0392b;text-align:right;white-space:nowrap">${(p.amount||0).toLocaleString('vi-VN',{maximumFractionDigits:0})}&nbsp;đ</td></tr>`).join('')}
+      ${urgent.map(p=>`<tr class="report-row-link" ondblclick="jumpToProposal('${p.id}')" style="border-top:1px solid #fde8e8;cursor:pointer"><td style="padding:4px 6px;font-size:10px;overflow:hidden;text-overflow:ellipsis">${p.desc||'—'}</td><td style="padding:4px 6px;font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis">${p.person||''}</td><td style="padding:4px 6px;font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis">${p.site||'—'}</td><td style="padding:4px 6px;font-size:11px;font-weight:700;color:#c0392b;text-align:right;white-space:nowrap">${(p.amount||0).toLocaleString('vi-VN',{maximumFractionDigits:0})}&nbsp;đ</td></tr>`).join('')}
     </table>
   </div>` : ''}`;
 
@@ -3597,6 +3597,7 @@ function renderReportSummary(){
     + makeTable('✅ Đã duyệt · chờ chuyển', '#d97706', '#fffbeb', appd, false, p=>(getOfficialApprovedAmount(p)||0)-getTotalTransferred(p))
     + makeTable('⏳ Chờ duyệt', '#9333ea', '#fdf4ff', pend, false, p=>parseFloat(p.amount)||0)
     + makeTable('❌ Từ chối', '#dc2626', '#fff1f2', rej, true);
+  attachReportDoubleTap(el);
 }
 
 function generateReport(){
