@@ -1782,6 +1782,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('header-date').textContent = new Date().toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
   document.getElementById('inp-sheet-url').value = sheetUrl;
   updateSheetBadge();
+  // Ẩn màn login ngay nếu có cache role — không chờ Firebase
+  const hasCachedSession = Object.keys(localStorage).some(k => k.startsWith('dc_role_'));
+  if(hasCachedSession) document.getElementById('role-screen').style.display='none';
+
   showPage('home', document.querySelector('.nav-item'));
   renderAll();
   initFirebaseSync();
