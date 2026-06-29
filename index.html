@@ -3505,7 +3505,7 @@ function renderReportSummary(){
   const appd    = fp.filter(p=>p.status==='approved');
   const pend    = fp.filter(p=>p.status==='pending');
   const rej     = fp.filter(p=>p.status==='rejected');
-  const urgent  = fp.filter(p=>(p.priority||'normal')==='urgent' && p.status!=='transferred' && p.status!=='rejected');
+  const urgent  = fp.filter(p=>(p.priority||'normal')==='urgent' && p.status!=='transferred' && p.status!=='rejected' && getTotalTransferred(p)<(parseFloat(p.amount)||0));
   const pendAmt = pend.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
   const appdAmt = appd.reduce((a,p)=>a+(getOfficialApprovedAmount(p)||0)-getTotalTransferred(p),0);
 
