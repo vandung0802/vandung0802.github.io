@@ -1169,10 +1169,16 @@ async function doLogin(){
   errEl.textContent = '';
   if(!email || !pass){ errEl.textContent='Vui lòng nhập email và mật khẩu'; return; }
   btn.disabled = true; btn.textContent = '⏳ Đang đăng nhập...';
+  // Sau 4 giây vẫn chờ → hiện thông báo mạng chậm
+  const slowTimer = setTimeout(()=>{
+    if(btn.disabled) errEl.textContent = '🌐 Mạng chậm, vui lòng chờ thêm...';
+  }, 4000);
   try {
     await firebase.auth().signInWithEmailAndPassword(email, pass);
-    // onAuthStateChanged sẽ xử lý tiếp
+    clearTimeout(slowTimer);
+    // onAuthStateChanged ẩn màn login, không cần reset btn
   } catch(e) {
+    clearTimeout(slowTimer);
     let msg = 'Đăng nhập thất bại';
     if(e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential') msg='Email hoặc mật khẩu không đúng';
     else if(e.code==='auth/invalid-email') msg='Email không hợp lệ';
@@ -1291,7 +1297,9 @@ function initAuth(){
   firebase.auth().onAuthStateChanged(async user=>{
     if(user){
       currentUser = user;
-      // Dùng cache để vào app ngay, đồng thời fetch Firebase song song
+      // Ẩn màn login NGAY khi Firebase xác nhận danh tính (trước khi đọc DB)
+      document.getElementById('role-screen').style.display='none';
+      // Dùng cache để vào app ngay
       const cached = localStorage.getItem('dc_role_'+user.uid);
       if(cached){
         try {
@@ -1299,7 +1307,7 @@ function initAuth(){
           if(role){ currentUserName = name||''; setRole(role); trackOnline(user.uid, name||user.email, role); }
         } catch(e){}
       }
-      // Fetch OTP + userRoles song song
+      // Fetch OTP + userRoles song song (chạy ngầm)
       const [otpSnap, snap] = await Promise.all([
         db.ref('duyetchi/pendingOtp/'+user.uid).get(),
         db.ref('duyetchi/userRoles/'+user.uid).get()
