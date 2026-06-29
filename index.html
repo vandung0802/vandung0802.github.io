@@ -657,15 +657,13 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
     <div class="card-header">🔐 Tài khoản</div>
     <div class="card-body">
       <div id="auth-account-info" style="font-size:13px;color:var(--text-sub);margin-bottom:12px"></div>
-      <div id="admin-reset-section" style="display:none;margin-bottom:12px">
-        <div style="padding:10px;background:#e8f5e9;border-radius:8px;margin-bottom:8px">
-          <div style="font-size:12px;color:#1b5e20;font-weight:700;margin-bottom:8px">🟢 Đang online</div>
-          <div id="online-users-list" style="font-size:13px;color:var(--text)">Đang tải...</div>
-        </div>
-        <div style="padding:10px;background:#fde8e8;border-radius:8px">
-          <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:6px">⚠️ Chỉ dành cho Admin (D)</div>
-          <button onclick="adminResetAllRoles()" style="width:100%;padding:8px;font-size:13px;background:var(--red);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">🗑 Xóa toàn bộ dữ liệu đăng nhập (userRoles)</button>
-        </div>
+      <div style="padding:10px;background:#e8f5e9;border-radius:8px;margin-bottom:12px">
+        <div style="font-size:12px;color:#1b5e20;font-weight:700;margin-bottom:8px">🟢 Đang online</div>
+        <div id="online-users-list" style="font-size:13px;color:var(--text)">Đang tải...</div>
+      </div>
+      <div id="admin-reset-section" style="display:none;margin-bottom:12px;padding:10px;background:#fde8e8;border-radius:8px">
+        <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:6px">⚠️ Chỉ dành cho Admin (D)</div>
+        <button onclick="adminResetAllRoles()" style="width:100%;padding:8px;font-size:13px;background:var(--red);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700">🗑 Xóa toàn bộ dữ liệu đăng nhập (userRoles)</button>
       </div>
       <details style="margin-bottom:10px">
         <summary style="font-size:13px;font-weight:600;cursor:pointer;color:var(--blue)">Cập nhật tên &amp; vai trò</summary>
@@ -1261,8 +1259,7 @@ function trackOnline(uid, name, role){
   ref.onDisconnect().remove();
   // Cập nhật lastSeen mỗi 60 giây
   setInterval(()=>{ ref.update({ lastSeen: Date.now() }); }, 60000);
-  // Nếu là Dũng thì lắng nghe danh sách online
-  if(role==='dung') listenOnlineUsers();
+  listenOnlineUsers();
 }
 
 function listenOnlineUsers(){
