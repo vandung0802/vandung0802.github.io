@@ -3612,7 +3612,8 @@ function renderReportSummary(){
   // Hàm tạo bảng nhóm
   const makeTable = (title, color, bg, list, showRej, amtFn) => {
     if(!list.length) return '';
-    const rows = list.map(p=>{
+    const rows = list.map((p,i)=>{
+      const stt = list.length - i;
       const trans = getTotalTransferred(p);
       const official = getOfficialApprovedAmount(p)||0;
       const remaining = official - trans;
@@ -3634,6 +3635,7 @@ function renderReportSummary(){
       const prv = p.priority||'normal';
       const prCell = prv==='urgent'?'🔴':prv==='low'?'🟢':'🟡';
       return `<tr class="report-row-link" ondblclick="jumpToProposal('${p.id}')">
+        <td style="text-align:center;font-size:9px;color:var(--text-sub);vertical-align:middle;white-space:nowrap;width:18px">${stt}</td>
         <td class="col-desc" style="font-weight:600;line-height:1.4">${p.desc}</td>
         <td class="col-person">${p.person||'—'}</td>
         <td class="col-site" style="color:#64748b">${(p.site||'').replace('CT ','')}</td>
@@ -3652,7 +3654,7 @@ function renderReportSummary(){
       <div style="font-size:11px;font-weight:700;color:${color};background:${bg};padding:6px 10px;border-radius:8px 8px 0 0;border-left:3px solid ${color}">${title} — ${list.length} khoản · ${fmtVND(groupTotal)}</div>
       <div style="border-radius:0 0 8px 8px;overflow:hidden">
         <table class="report-table">
-          <thead><tr><th class="col-desc">Nội dung</th><th class="col-person">Người</th><th class="col-site">Công trình</th><th class="col-pri">Mức</th><th class="col-amt">${showRej?'Đề xuất':'Số tiền'}</th>${showRej?'<th class="col-rej">Lý do</th>':''}</tr></thead>
+          <thead><tr><th style="text-align:center;width:18px">#</th><th class="col-desc">Nội dung</th><th class="col-person">Người</th><th class="col-site">Công trình</th><th class="col-pri">Mức</th><th class="col-amt">${showRej?'Đề xuất':'Số tiền'}</th>${showRej?'<th class="col-rej">Lý do</th>':''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
