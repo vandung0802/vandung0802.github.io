@@ -1650,6 +1650,7 @@ function initFirebaseSync(){
     fbInitialLoadDone=true;
     // Firebase rỗng lần đầu → đẩy dữ liệu local lên
     if(wasFirst && !proposals.length && !persons.length) pushToFirebase();
+    renderStats();
     renderAll();
     if(document.getElementById('page-settings').style.display!=='none') renderSettings();
     if(document.getElementById('page-report').style.display!=='none'){ renderReportFilters(); renderReportSummary(); renderReportTables(); }
