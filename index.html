@@ -912,7 +912,7 @@ function compressImage(file){
     r.onload = e=>{
       const img = new Image();
       img.onload = ()=>{
-        const MAX = 800;
+        const MAX = 600;
         let w = img.naturalWidth, h = img.naturalHeight;
         if(w > MAX || h > MAX){
           if(w > h){ h = Math.round(h * MAX / w); w = MAX; }
@@ -922,8 +922,8 @@ function compressImage(file){
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
         // WebP nhỏ hơn JPEG ~30-35% cùng chất lượng; fallback sang JPEG nếu không hỗ trợ
-        const webp = canvas.toDataURL('image/webp', 0.75);
-        resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.65));
+        const webp = canvas.toDataURL('image/webp', 0.65);
+        resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.55));
       };
       img.src = e.target.result;
     };
@@ -1576,6 +1576,9 @@ function pushToFirebase(){
     if(prevImagesMap[p.id] !== imgJson){
       updates['duyetchi/images/'+p.id] = {imgImages, proofImages};
       hasChange = true;
+      // Cập nhật cache local ngay để lazy loader biết ảnh đã có
+      if(typeof _imagesData !== 'undefined') _imagesData[p.id] = {imgImages, proofImages};
+      if(typeof _hasImagesSet !== 'undefined') _hasImagesSet.add(p.id);
     }
   });
   Object.keys(prevImagesMap).forEach(id=>{
@@ -1606,6 +1609,9 @@ function initFirebaseSync(){
   // → khi duyệt phiếu chỉ proposals thay đổi, KHÔNG tải lại ảnh
   let _metaLoaded=false, _proposalsLoaded=false, _imagesLoaded=false;
   let _metaData={}, _proposalsData={}, _imagesData={};
+  let _hasImagesSet = new Set(); // phiếu nào có ảnh (shallow keys)
+  let _loadingImages = new Set(); // đang fetch
+  let _imgObserver = null;
 
   function _mergeAndRender(){
     if(!_metaLoaded || !_proposalsLoaded) return;
@@ -1664,11 +1670,20 @@ function initFirebaseSync(){
     _proposalsLoaded = true;
     _mergeAndRender();
   });
-  db.ref('duyetchi/images').on('value', snap=>{
-    _imagesData = snap.val() || {};
-    _imagesLoaded = true;
-    _mergeAndRender();
-  }, ()=>{ _imagesLoaded=true; _mergeAndRender(); }); // bỏ qua lỗi ảnh, vẫn render
+  // Lazy load ảnh: chỉ tải shallow (biết phiếu nào có ảnh) không tải toàn bộ base64 upfront
+  const FB_DB_URL = 'https://duyetchi-pva379-default-rtdb.firebaseio.com';
+  _imagesLoaded = true; // không block render
+  _mergeAndRender();
+  // Lấy danh sách phiếu có ảnh (shallow = chỉ keys, không data)
+  firebase.auth().currentUser && firebase.auth().currentUser.getIdToken().then(token=>{
+    fetch(`${FB_DB_URL}/duyetchi/images.json?shallow=true&auth=${token}`)
+      .then(r=>r.json()).then(keys=>{
+        if(!keys) return;
+        _hasImagesSet = new Set(Object.keys(keys));
+        // Trigger lazy load cho các card đang hiển thị
+        _observeImageCards();
+      }).catch(()=>{});
+  });
 
   // Xử lý dữ liệu cũ (format mảng) — tự migrate lên format mới
   function _handleOldFormat(oldProposals){
@@ -1695,6 +1710,47 @@ function initFirebaseSync(){
     }, 2000);
   }
 
+}
+
+// Lazy load ảnh: quan sát card nào vào viewport thì tải ảnh
+function _observeImageCards(){
+  if(_imgObserver) _imgObserver.disconnect();
+  _imgObserver = new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(!entry.isIntersecting) return;
+      const id = entry.target.dataset.pid;
+      if(!id || _imagesData[id] || _loadingImages.has(id)) return;
+      _loadImagesForProposal(id);
+    });
+  }, { rootMargin: '200px' });
+  document.querySelectorAll('.proposal[id^="card-"]').forEach(card=>{
+    const id = card.id.replace('card-','');
+    if(_hasImagesSet.has(id) && !_imagesData[id]){
+      card.dataset.pid = id;
+      _imgObserver.observe(card);
+    }
+  });
+}
+
+async function _loadImagesForProposal(id){
+  if(_loadingImages.has(id) || _imagesData[id]) return;
+  _loadingImages.add(id);
+  try {
+    const snap = await db.ref('duyetchi/images/'+id).get();
+    if(snap.exists()){
+      _imagesData[id] = snap.val();
+      const idx = proposals.findIndex(p=>p.id===id);
+      if(idx>=0){
+        const imgs = _imagesData[id];
+        proposals[idx].imgImages = imgs.imgImages||[];
+        proposals[idx].proofImages = imgs.proofImages||[];
+        // Re-render chỉ card đó, không render lại toàn bộ danh sách
+        const cardEl = document.getElementById('card-'+id);
+        if(cardEl) cardEl.outerHTML = renderCard(proposals[idx]);
+      }
+    }
+  } catch(e){}
+  _loadingImages.delete(id);
 }
 
 function updateFbBadge(ok){
@@ -1972,6 +2028,8 @@ function renderProposals(){
   }
   list.innerHTML = items.map(p=>renderCard(p)).join('');
   attachThumbLongPress(list);
+  // Lazy load ảnh cho các card vừa render
+  if(typeof _observeImageCards === 'function') _observeImageCards();
 }
 
 // Gắn nhấn giữ cho mọi ảnh thumbnail (.proof-thumb) trong 1 vùng container vừa render.
