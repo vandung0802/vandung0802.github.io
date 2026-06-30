@@ -1858,9 +1858,9 @@ function showPage(pg, btn){
   if(pg==='settings') renderSettings();
   if(pg==='report'){
     renderReportFilters();
-    renderReportSummary(); // tóm tắt hiện ngay
-    // Bảng nặng defer sang frame sau để không block UI
-    requestAnimationFrame(()=>{ renderReportRejected(); renderReportList(); renderReportTables(); });
+    // Chỉ render tab đang active, không render tất cả
+    const activeTab = document.querySelector('.report-subtab.active')?.dataset.tab || 'summary';
+    _renderReportTab(activeTab);
   }
 }
 
@@ -2058,7 +2058,19 @@ function attachThumbLongPress(container){
   });
 }
 
+const _cardCache = new Map();
+function _cardHash(p){
+  return p.id+'|'+p.status+'|'+p.amount+'|'+p.ts+'|'+(p.approvedDAmount||0)+'|'+(p.approvedHAmount||0)+'|'+(p.priority||'')+'|'+(p.transfers?p.transfers.length:0)+'|'+(p.imgImages?p.imgImages.length:0)+'|'+(p.proofImages?p.proofImages.length:0);
+}
 function renderCard(p){
+  const hash = _cardHash(p);
+  const cached = _cardCache.get(p.id);
+  if(cached && cached.hash === hash) return cached.html;
+  const html = _buildCard(p);
+  _cardCache.set(p.id, { hash, html });
+  return html;
+}
+function _buildCard(p){
   const st = STATUS[p.status]||STATUS.pending;
   // Khi đang ở trạng thái "Đã duyệt", hiện rõ D đã duyệt bao nhiêu và H đã duyệt bao nhiêu (hoặc đang chờ),
   // mỗi người 1 dòng badge riêng, để biết ngay tình trạng duyệt từng phần mà không cần mở từng nút.
@@ -3310,10 +3322,14 @@ function setReportTab(tab, btn){
   ['summary','list','done','pending','rejected'].forEach(t=>{
     document.getElementById('report-tab-'+t).style.display = (t===tab) ? 'block' : 'none';
   });
+  _renderReportTab(tab);
+}
+
+function _renderReportTab(tab){
   if(tab==='summary') renderReportSummary();
-  if(tab==='done' || tab==='pending') renderReportTables();
-  if(tab==='rejected') renderReportRejected();
-  if(tab==='list') renderReportList();
+  else if(tab==='list') requestAnimationFrame(renderReportList);
+  else if(tab==='done'||tab==='pending') requestAnimationFrame(renderReportTables);
+  else if(tab==='rejected') requestAnimationFrame(renderReportRejected);
 }
 
 function renderPersonChips(){ renderReportFilters(); } // compat alias
@@ -3376,10 +3392,7 @@ function getFilteredProposals(){
 function applyReportFilter(){
   const tab = document.querySelector('.report-subtab.active');
   const t = tab ? tab.dataset.tab : 'summary';
-  if(t==='summary') renderReportSummary();
-  else if(t==='done'||t==='pending') renderReportTables();
-  else if(t==='list') renderReportList();
-  else if(t==='rejected') renderReportRejected();
+  _renderReportTab(t);
 }
 
 
