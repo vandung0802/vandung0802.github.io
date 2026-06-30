@@ -1670,20 +1670,12 @@ function initFirebaseSync(){
     _proposalsLoaded = true;
     _mergeAndRender();
   });
-  // Lazy load ảnh: chỉ tải shallow (biết phiếu nào có ảnh) không tải toàn bộ base64 upfront
-  const FB_DB_URL = 'https://duyetchi-pva379-default-rtdb.firebaseio.com';
-  _imagesLoaded = true; // không block render
-  _mergeAndRender();
-  // Lấy danh sách phiếu có ảnh (shallow = chỉ keys, không data)
-  firebase.auth().currentUser && firebase.auth().currentUser.getIdToken().then(token=>{
-    fetch(`${FB_DB_URL}/duyetchi/images.json?shallow=true&auth=${token}`)
-      .then(r=>r.json()).then(keys=>{
-        if(!keys) return;
-        _hasImagesSet = new Set(Object.keys(keys));
-        // Trigger lazy load cho các card đang hiển thị
-        _observeImageCards();
-      }).catch(()=>{});
-  });
+  // Tải ảnh đầy đủ nhưng không block render ban đầu
+  db.ref('duyetchi/images').once('value', snap=>{
+    _imagesData = snap.val() || {};
+    _imagesLoaded = true;
+    _mergeAndRender();
+  }, ()=>{ _imagesLoaded=true; _mergeAndRender(); });
 
   // Xử lý dữ liệu cũ (format mảng) — tự migrate lên format mới
   function _handleOldFormat(oldProposals){
