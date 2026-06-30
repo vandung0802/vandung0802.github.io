@@ -146,14 +146,35 @@ db.ref('duyetchi/images').once('value', ...)   // chỉ tải 1 lần lúc khở
 | `initAuth()` | 1305 | Khởi tạo Firebase Auth listener |
 | `initFirebaseSync()` | 1612 | Khởi tạo 3 listener Firebase |
 | `_mergeAndRender()` | 1617 | Merge meta+proposals+images → render |
+| `_handleOldFormat(old)` | 1692 | Migration proposals từ format cũ (mảng) → format mới (object) |
 | `setRole(role)` | 1381 | Set role + `_cardCache.clear()` + renderAll |
 | `logoutRole()` | 1363 | Đăng xuất role, xóa cache role, về màn login |
 | `trackOnline(uid,name,role)` | 1270 | Ghi trạng thái online lên Firebase |
 | `listenOnlineUsers()` | 1281 | Lắng nghe ai đang online |
 | `showOtpScreen(uid,name)` | 1217 | Màn hình OTP xác nhận đăng ký |
 | `verifyOtp(uid)` | 1228 | Xác nhận OTP đăng ký |
+| `cancelOtp()` | 1263 | Huỷ đăng ký, xóa user vừa tạo |
 | `enableNotifications(role)` | 1427 | Bật push notification, yêu cầu quyền + đăng ký FCM |
 | `updateFbBadge(ok)` | 1759 | Cập nhật badge trạng thái kết nối Firebase (icon trên header) |
+
+### Màn hình đăng nhập / đăng ký
+| Hàm | Dòng | Mô tả |
+|-----|------|-------|
+| `switchAuthTab(mode)` | 1104 | Chuyển tab login ↔ register trên màn hình auth |
+| `toggleAuthPass()` | 1123 | Hiện/ẩn mật khẩu |
+| `nameToRole(name)` | 1130 | Map tên người → role (dung/hien/trang/other) |
+| `getCurrentUserName()` | 1093 | Lấy tên người dùng từ Firebase Auth |
+| `doRegister()` | 1138 | Đăng ký tài khoản mới: tạo Firebase Auth user → lưu userRoles → tạo OTP → gửi push Dũng |
+| `doLogin()` | 1173 | Đăng nhập Firebase Auth, có xử lý timeout 4s (thông báo mạng chậm) |
+| `doForgotPass()` | 1200 | Gửi email reset mật khẩu qua Firebase |
+
+### Lần đăng nhập đầu / admin
+| Hàm | Dòng | Mô tả |
+|-----|------|-------|
+| `showUpdateRolePrompt()` | 3194 | Hiện overlay bắt buộc chọn tên (lần đầu dùng app trên thiết bị mới) |
+| `confirmFirstLogin()` | 3204 | Xác nhận tên → ghi userRoles Firebase → setRole |
+| `adminResetAllRoles()` | 3216 | Admin (D only): xóa toàn bộ `duyetchi/userRoles`, mọi người phải đăng ký lại |
+| `autofillPerson(name)` | 3189 | Tự điền tên vào form Thêm mới khi biết role |
 
 ### Render chính
 | Hàm | Dòng | Mô tả |
@@ -181,29 +202,49 @@ db.ref('duyetchi/images').once('value', ...)   // chỉ tải 1 lần lúc khở
 ### Xử lý duyệt & chuyển tiền
 | Hàm | Dòng | Mô tả |
 |-----|------|-------|
-| `approveBy(id, field)` | 2331 | Mở modal nhập số tiền duyệt |
-| `confirmApproveAmount()` | 2361 | Xác nhận duyệt với số tiền |
-| `undoApprove(id, field)` | 2397 | Huỷ duyệt |
+| `approveBy(id, field)` | 2331 | Mở modal nhập số tiền duyệt (field: `'D'` hoặc `'H'`) |
+| `closeApproveAmountModal()` | 2344 | Đóng modal nhập số tiền duyệt |
+| `undoApproveFromModal()` | 2349 | Undo duyệt từ bên trong modal (nút Huỷ duyệt) |
+| `aaFillFull()` | 2355 | Điền đầy số tiền đề xuất vào input modal duyệt (nút "Điền đủ") |
+| `confirmApproveAmount()` | 2361 | Xác nhận duyệt với số tiền đã nhập |
+| `undoApprove(id, field)` | 2397 | Huỷ duyệt (xóa approvedD/H, reset status nếu cần) |
 | `doTransfer(id)` | 2435 | Mở modal nhập số tiền chuyển |
-| `confirmTransferAmount()` | 2460 | Xác nhận chuyển tiền |
-| `undoTransfer(id)` | 2312 | Huỷ lần chuyển gần nhất |
-| `rejectBy(id, who)` | 2505 | Từ chối (D hoặc H) |
+| `closeTransferAmountModal()` | 2448 | Đóng modal nhập số tiền chuyển |
+| `taFillFull()` | 2453 | Điền đầy số tiền còn lại vào input modal chuyển (nút "Điền đủ") |
+| `confirmTransferAmount()` | 2460 | Xác nhận chuyển tiền: thêm vào `transfers[]`, update status |
+| `undoTransfer(id)` | 2312 | Huỷ lần chuyển gần nhất (pop `transfers[]`) |
+| `rejectBy(id, who)` | 2505 | Từ chối (who: `'D'` hoặc `'H'`), ghi lý do + timestamp |
 | `undoRejectBy(id, who)` | 2526 | Huỷ từ chối |
-| `changeStatus(id, status)` | 2554 | Đổi status đề xuất thủ công |
+| `undoReject(id)` | 2570 | Undo reject (alias/variant của undoRejectBy) |
+| `changeStatus(id, status)` | 2554 | Đổi status đề xuất thủ công (admin action) |
 | `shareProof(id)` | 2491 | Chia sẻ ảnh chứng từ (Web Share API) |
+| `renderApproveBox()` | 2177 | Render box duyệt trong card (hiện tại return `''` — placeholder) |
 
 ### Helper tính toán — QUAN TRỌNG
 | Hàm | Dòng | Mô tả |
 |-----|------|-------|
-| `getOfficialApprovedAmount(p)` | 2302 | Số tiền được duyệt chính thức (min của D và H nếu cả 2 duyệt) |
+| `getOfficialApprovedAmount(p)` | 2302 | Số tiền được duyệt chính thức: `h>0 ? h : d` |
 | `getTotalTransferred(p)` | 2307 | Tổng đã chuyển (sum của p.transfers[].amount) |
 | `getFilteredProposals()` | 3383 | Lọc proposals theo filter người + công trình trong báo cáo |
 | `jumpToProposal(id)` | 3334 | Nhảy đến card (chuyển sang tab Danh sách, scroll đến card) |
+| `matchFilter(p, f)` | 1982 | Logic match filter stat box cho 1 proposal |
+| `getMyPendingItems()` | 1885 | Lấy danh sách việc chờ làm của role hiện tại (D: cần duyệt, H: cần duyệt, T: cần chuyển, other: đã chuyển) |
+| `getSeenIds()` | 1911 | Lấy Set ID thông báo đã đọc từ localStorage |
+| `markAllSeen(items)` | 1912 | Lưu tất cả ID thông báo là đã đọc vào localStorage |
 | `fmtVND(n)` | 1775 | Format tiền: `1.000.000 đ` |
 | `fmt(n)` | 1765 | Format số không có đơn vị |
+| `parseAmountInput(el)` | 1766 | Parse input số tiền (xóa dấu chấm → parseInt) |
+| `fmtAmountInput(el)` | 1767 | Format input số tiền theo kiểu phân cách hàng nghìn khi gõ |
 | `fmtT(ts)` | 1793 | Format giờ: `07:30` |
 | `fmtFull(ts)` | 1794 | Format giờ + ngày đầy đủ |
+| `initials(name)` | 1795 | Lấy chữ cái đầu tên (ví dụ `Nguyễn Văn A` → `NA`) |
+| `priorityBadge(p)` | 1866 | Tạo HTML badge ưu tiên (🔥 Gấp / Có thể chờ) |
+| `prioritySortVal(p)` | 1872 | Trả về số thứ tự ưu tiên để sort (`urgent=0, normal=1, low=2`) |
 | `showToast(msg)` | 3964 | Hiện toast thông báo nhỏ |
+| `fallbackCopy(text)` | 3732 | Copy text vào clipboard theo cách cũ (execCommand) khi Clipboard API không khả dụng |
+| `dataUrlToBlob(src)` | 944 | Chuyển data URL base64 hoặc URL thường → Blob |
+| `convertBlobToPng(blob)` | 1027 | Chuyển Blob ảnh → PNG data URL (dùng khi copy ảnh) |
+| `urlB64ToUint8Array(b64)` | 1398 | Decode VAPID public key từ base64url → Uint8Array (cần cho Web Push subscribe) |
 
 ### Firebase & Data
 | Hàm | Dòng | Mô tả |
@@ -213,22 +254,51 @@ db.ref('duyetchi/images').once('value', ...)   // chỉ tải 1 lần lúc khở
 | `migrateAmountsToVND()` | 1777 | Migration dữ liệu cũ sang format VND |
 | `submitProposal()` | 3101 | Thêm đề xuất mới |
 | `openEditProposal(id)` | 2590 | Mở modal sửa đề xuất |
-| `saveEditProposal()` | 2721 | Lưu chỉnh sửa |
+| `closeEditModal()` | 2618 | Đóng modal sửa đề xuất, xóa `editingImages`, xóa `editingProposalId` |
+| `saveEditProposal()` | 2721 | Lưu chỉnh sửa: merge `editingImages` → phiếu thật → save → syncEditToSheet |
 | `del(id)` | 2576 | Xóa đề xuất |
 
-### Ảnh
+### Ảnh — upload & hiển thị
 | Hàm | Dòng | Mô tả |
 |-----|------|-------|
-| `compressImage(file)` | 918 | Compress về max 600px, WebP 0.65 |
-| `handleImg(input)` | 2754 | Xử lý upload ảnh Zalo |
-| `pasteImgFromClipboard(target)` | 2627 | Paste ảnh từ clipboard |
-| `uploadProof(id)` | 3019 | Upload ảnh chứng từ |
-| `addProofImages(id, files)` | 3031 | Thêm ảnh chứng từ |
-| `removeProofImage(id, idx)` | 3075 | Xóa ảnh chứng từ |
-| `removeZaloImage(id, idx)` | 3084 | Xóa ảnh Zalo |
-| `openImg(id, type, idx)` | 2914 | Mở modal xem ảnh phóng to |
-| `attachLongPress(el,...)` | 867 | Long press ảnh → menu Copy/Tải/Xóa |
-| `attachThumbLongPress(container)` | 2034 | Gắn long press cho tất cả thumbnail |
+| `compressImage(file)` | 918 | Compress về max 600px, WebP 0.65 (fallback JPEG 0.55 nếu không hỗ trợ WebP) |
+| `handleImg(input)` | 2754 | Xử lý chọn file ảnh Zalo từ input → compress → thêm vào `uploadedImages` |
+| `addImagesToUpload(files)` | 2771 | Thêm mảng File → compress + push vào `uploadedImages` + re-render preview |
+| `renderUploadPreview()` | 2790 | Render thumbnail preview ảnh đang chờ upload (tab Thêm mới) |
+| `removeUploadedImage(idx)` | 2812 | Xóa 1 ảnh khỏi `uploadedImages` |
+| `removeImg()` | 2817 | Xóa toàn bộ `uploadedImages` |
+| `_setImgLoading(delta)` | 2762 | Tăng/giảm bộ đếm ảnh đang xử lý, hiện/ẩn spinner |
+| `pasteImgFromClipboard(target)` | 2627 | Paste ảnh từ clipboard (target: `'zalo'` hoặc `'proof'` hoặc `'edit'`) |
+| `uploadProof(id)` | 3019 | Mở input file upload ảnh chứng từ cho phiếu id |
+| `addProofImages(id, files)` | 3031 | Thêm ảnh chứng từ: compress → push vào `proofImages[]` → save |
+| `removeProofImage(id, idx)` | 3075 | Xóa 1 ảnh chứng từ theo index |
+| `removeZaloImage(id, idx)` | 3084 | Xóa 1 ảnh Zalo theo index |
+| `openImg(id, type, idx)` | 2914 | Mở modal xem ảnh phóng to (type: `'img'` hoặc `'proof'`) |
+| `showModalImg()` | 2931 | Hiển thị ảnh hiện tại trong modal (theo `modalIdx`) |
+| `navModalImg(event, dir)` | 2939 | Điều hướng prev/next trong modal ảnh |
+| `downloadModalImg()` | 2945 | Tải ảnh đang xem trong modal về máy |
+| `downloadImageDataUrl(src, name)` | 2954 | Tải ảnh từ data URL với tên file chỉ định |
+| `closeImgModal(event)` | 3003 | Đóng modal xem ảnh (click backdrop) |
+| `attachLongPress(el,getSrc,getDelFn)` | 867 | Gắn sự kiện nhấn giữ cho thẻ `<img>` → hiện menu Copy/Tải/Xóa |
+| `attachThumbLongPress(container)` | 2034 | Gắn long press cho tất cả thumbnail trong 1 container |
+
+### Menu ảnh (long press)
+| Hàm | Dòng | Mô tả |
+|-----|------|-------|
+| `showImgActionMenu(src, deleteFn)` | 904 | Mở menu action ảnh, set `imgActionContext` |
+| `hideImgActionMenu()` | 912 | Đóng menu, xóa `imgActionContext` |
+| `imgActionCopy()` | 977 | Copy ảnh vào clipboard (Web Clipboard API + fallback) |
+| `imgActionDownload()` | 1044 | Tải ảnh về máy |
+| `imgActionShare()` | 1051 | Chia sẻ ảnh qua Web Share API |
+| `imgActionDelete()` | 1077 | Xóa ảnh (gọi `imgActionContext.onDelete()`) |
+
+### Ảnh — modal sửa đề xuất
+| Hàm | Dòng | Mô tả |
+|-----|------|-------|
+| `handleEditImg(input)` | 2678 | Xử lý upload ảnh trong modal Sửa → thêm vào `editingImages[]` |
+| `renderEditImgPreview()` | 2697 | Render preview ảnh trong modal Sửa |
+| `removeEditImage(idx)` | 2716 | Xóa 1 ảnh trong modal Sửa (chưa lưu thật) |
+| `setZoneLoading(zoneId, loading, total)` | 2659 | Hiện/ẩn spinner loading cho zone upload ảnh |
 
 ### Báo cáo
 | Hàm | Dòng | Mô tả |
@@ -253,15 +323,25 @@ db.ref('duyetchi/images').once('value', ...)   // chỉ tải 1 lần lúc khở
 | `updateNotifBadge()` | 1914 | Cập nhật badge số thông báo chưa đọc |
 | `toggleNotifPanel()` | 1925 | Mở/đóng panel thông báo (🔔) |
 | `renderNotifPanel()` | 1949 | Render danh sách thông báo |
-| `fcmRegister(role)` | 1407 | Đăng ký push notification (FCM) |
-| `sendPushNotif(title,body,roles)` | 1501 | Gửi push qua Cloud Functions |
-| `clearAllNotifs()` | 1818 | Xóa badge + đóng notification cũ |
+| `closeNotifPanel()` | - | (được gọi inline) Đóng panel thông báo |
+| `closeNotifOnOutside(e)` | 1939 | Đóng panel thông báo khi click bên ngoài |
+| `closeNotifAndGo(id)` | 1967 | Đóng panel + nhảy đến card khi click thông báo |
+| `checkNotifBanner()` | 1369 | Kiểm tra nên hiện banner nhắc bật thông báo không (chỉ hiện khi PWA standalone + chưa grant) |
+| `updateNotifSettingsStatus()` | 1452 | Cập nhật UI trạng thái notification trong tab Cài đặt |
+| `fcmRegister(role)` | 1407 | Đăng ký push subscription lên Firebase node `push-subs/{role}/{subKey}` |
+| `sendPushNotif(title,body,roles)` | 1501 | Gửi push qua Cloud Functions đến các role chỉ định |
+| `clearAllNotifs()` | 1818 | Xóa badge + đóng tất cả notification cũ |
 
 ### Cài đặt & quản lý tài khoản
 | Hàm | Dòng | Mô tả |
 |-----|------|-------|
 | `doUpdateRole()` | 3223 | Cập nhật tên/role người dùng trong cài đặt |
 | `doChangePassword()` | 3237 | Đổi mật khẩu Firebase Auth |
+| `addPerson()` | 3296 | Thêm người vào danh sách (từ input trong Settings) |
+| `delPerson(i)` | 3305 | Xóa người theo index |
+| `addSite()` | 3307 | Thêm công trình vào danh sách |
+| `delSite(i)` | 3313 | Xóa công trình theo index |
+| `renderPersonChips()` | 3332 | Re-render chips filter người trong báo cáo (alias của `renderReportFilters()`) |
 
 ### Google Sheets sync
 | Hàm | Dòng | Mô tả |
@@ -277,11 +357,16 @@ db.ref('duyetchi/images').once('value', ...)   // chỉ tải 1 lần lúc khở
 | `updateSheetBadge()` | 3767 | Cập nhật badge trạng thái kết nối Sheet |
 
 ### Google Apps Script (nhúng trong app3.html — ở cuối file)
+Code Apps Script được lưu dưới dạng string trong `copyScript()`. Các hàm sau thuộc Apps Script, KHÔNG phải browser JS:
+
 | Hàm | Dòng | Mô tả |
 |-----|------|-------|
-| `copyScript()` | 3888 | Copy code Apps Script vào clipboard |
-| `openApp()` | 3890 | Mở URL Google Sheet |
-| `doGet(e)` | 3891 | Handler Apps Script (không chạy trên browser) |
+| `copyScript()` | 3888 | Copy toàn bộ code Apps Script vào clipboard để paste vào Google Sheet |
+| `openApp()` | 3890 | (Apps Script) Hiện modal link mở app trong Google Sheet |
+| `onOpen()` | 3889 | (Apps Script) Tạo menu "App Duyệt Chi" trong Google Sheet |
+| `doGet(e)` | 3891 | (Apps Script) Handler nhận request từ app, xử lý ghi dữ liệu vào Sheet |
+
+> `syncApprovalAmountToSheet(p)` (dòng 3849): Sync số tiền đã duyệt (cả D và H) lên Sheet — thường được gọi sau khi xác nhận duyệt.
 
 ---
 
@@ -299,6 +384,24 @@ db.ref('duyetchi/images').once('value', ...)   // chỉ tải 1 lần lúc khở
 | `lastPushedSnapshot` | 1539 | `null` | Snapshot lần push cuối (diff-based push) |
 | `PRIORITY_ORDER` | 1865 | `{urgent:0, normal:1, low:2}` | Thứ tự ưu tiên sort |
 | `hasCachedSession` | 1839 | auto-detect | True nếu có `dc_role_*` trong localStorage → ẩn màn login ngay lập tức |
+| `uploadedImages` | 854 | `[]` | Mảng base64 ảnh Zalo đang chờ submit (tab Thêm mới) |
+| `imgActionContext` | 860 | `null` | `{ src, onDelete }` — context menu ảnh đang mở |
+| `longPressTimer` | 861 | `null` | Timer long press ảnh |
+| `LONG_PRESS_MS` | 862 | `450` | Thời gian ms để kích hoạt long press |
+| `authMode` | 1102 | `'login'` | Mode màn hình auth: `'login'` hoặc `'register'` |
+| `currentUserName` | 1303 | `''` | Tên người dùng (map từ `persons[]` theo role) |
+| `editingProposalId` | 2587 | `null` | ID phiếu đang sửa trong modal Edit |
+| `editingImages` | 2588 | `[]` | Ảnh tạm trong modal Edit (chỉ ghi vào phiếu thật khi bấm Lưu) |
+| `pendingApproveField` | 2330 | `null` | `'D'` hoặc `'H'` — field đang chờ approve trong modal |
+| `pendingTransferId` | 2434 | `null` | ID phiếu đang chờ xác nhận chuyển tiền |
+| `pendingUploadProofId` | 3017 | `null` | ID phiếu đang chờ paste ảnh chứng từ |
+| `modalImages` | 2909 | `[]` | Danh sách ảnh trong modal xem phóng to |
+| `modalIdx` | 2910 | `0` | Index ảnh đang xem trong modal |
+| `modalProposalId` | 2911 | `null` | ID phiếu đang xem ảnh |
+| `modalKind` | 2912 | `null` | `'img'` hoặc `'proof'` — loại ảnh đang xem |
+| `_otpUid` | 1215 | `null` | UID của user đang chờ xác nhận OTP |
+| `_sharing` | 1050 | `false` | Flag tránh double-tap nút Share |
+| `_imgLoadingCount` | 2761 | `0` | Bộ đếm ảnh đang xử lý (>0 → hiện spinner) |
 
 ### Instant login (`hasCachedSession`)
 ```js
@@ -357,7 +460,8 @@ function _cardHash(p){
 |------|------|-------|
 | `fbInitialLoadDone` | 846 | False cho đến khi Firebase load lần đầu xong — tránh ghi đè dữ liệu |
 | `lastPushedSnapshot` | 1539 | Snapshot lần push cuối — chỉ push phần thay đổi, không push lại toàn bộ |
-| `_renderAllPending` | ~1870 | True khi edit modal đang mở — hoãn renderAll đến khi modal đóng |
+| `_renderAllTimer` | 1874 | `null` — ID của debounce timer `renderAll()` (80ms) |
+| `_renderAllPending` | 1875 | True khi edit modal đang mở — hoãn renderAll đến khi modal đóng |
 | `currentRole` | 1083 | Role hiện tại — ảnh hưởng đến nút trong card, PHẢI có trong `_cardHash` |
 
 ---
