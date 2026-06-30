@@ -1371,6 +1371,7 @@ function checkNotifBanner() {
 
 function setRole(role){
   currentRole = role;
+  _cardCache.clear();
   const r = ROLES[role]||ROLES.other;
   document.getElementById('role-badge').innerHTML = `<span style="color:${r.color};font-weight:800">${r.icon}</span> ${r.label}`;
   document.getElementById('role-screen').style.display='none';
@@ -2052,7 +2053,7 @@ function attachThumbLongPress(container){
 
 const _cardCache = new Map();
 function _cardHash(p){
-  return p.id+'|'+p.status+'|'+p.amount+'|'+p.ts+'|'+(p.approvedDAmount||0)+'|'+(p.approvedHAmount||0)+'|'+(p.priority||'')+'|'+(p.transfers?p.transfers.length:0)+'|'+(p.imgImages?p.imgImages.length:0)+'|'+(p.proofImages?p.proofImages.length:0);
+  return currentRole+'|'+p.id+'|'+p.status+'|'+p.amount+'|'+p.ts+'|'+(p.approvedDAmount||0)+'|'+(p.approvedHAmount||0)+'|'+(p.priority||'')+'|'+(p.transfers?p.transfers.length:0)+'|'+(p.imgImages?p.imgImages.length:0)+'|'+(p.proofImages?p.proofImages.length:0);
 }
 function renderCard(p){
   const hash = _cardHash(p);
