@@ -614,8 +614,9 @@ code{background:var(--gray-light);padding:2px 5px;border-radius:4px;font-size:10
   <div class="card report-tab-panel" id="report-tab-summary">
     <div class="card-body" style="padding:0">
       <div id="report-summary-content" style="max-height:calc(100vh - 230px);overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
-      <div style="padding:12px 12px 4px">
-        <button class="btn-full btn-outline-full" onclick="copyReport()" style="margin-top:4px">📋 Sao chép gửi Zalo</button>
+      <div style="padding:12px 12px 4px;display:flex;gap:8px">
+        <button class="btn-full btn-outline-full" onclick="copyReport()" style="margin-top:4px;flex:1">📋 Sao chép gửi Zalo</button>
+        <button class="btn-full btn-outline-full" onclick="downloadSummaryExcel()" style="margin-top:4px;flex:1;color:#16a34a;border-color:#16a34a">⬇️ Tải Excel</button>
       </div>
     </div>
   </div>
@@ -804,7 +805,7 @@ const firebaseConfig = {
   messagingSenderId: "366275914302",
   appId: "1:366275914302:web:c9d7aefd880fa0985c7f6f"
 };
-const APP_VERSION = '20260630-v15';
+const APP_VERSION = '20260630-v16';
 if(localStorage.getItem('app_version') !== APP_VERSION){
   localStorage.setItem('app_version', APP_VERSION);
 }
@@ -3743,6 +3744,73 @@ function fallbackCopy(text){
     showToast('❌ Không sao chép được, vui lòng copy tay');
   }
   document.body.removeChild(ta);
+}
+
+function downloadSummaryExcel(){
+  const fp = getFilteredProposals();
+  if(!fp.length){ showToast('Chưa có đề xuất nào'); return; }
+
+  const hasTrans = fp.filter(p=>getTotalTransferred(p)>0);
+  const appd     = fp.filter(p=>p.status==='approved' && (getOfficialApprovedAmount(p)||0)-getTotalTransferred(p)>0.001);
+  const pend     = fp.filter(p=>p.status==='pending');
+  const rej      = fp.filter(p=>p.status==='rejected');
+  const urgent   = fp.filter(p=>(p.priority||'normal')==='urgent' && p.status!=='transferred' && p.status!=='rejected' && getTotalTransferred(p)<(parseFloat(p.amount)||0));
+
+  const priLabel = v => v==='urgent'?'Gấp':v==='low'?'Có thể chờ':'Bình thường';
+  const esc = s => '"' + String(s||'').replace(/"/g,'""') + '"';
+
+  const header = ['#','Nội dung','Người','Công trình','Ưu tiên','Số tiền đề xuất','Số tiền duyệt','Đã chuyển','Còn lại','Trạng thái','Ghi chú'].map(esc).join(',');
+
+  const toRows = (list, groupLabel) => list.map((p,i)=>{
+    const trans = getTotalTransferred(p);
+    const official = getOfficialApprovedAmount(p)||0;
+    const remaining = Math.max(0, official - trans);
+    const dRej = p.rejectedByD; const hRej = p.rejectedByH;
+    const rejNote = [dRej&&dRej.reason?'D: '+dRej.reason:'', hRej&&hRej.reason?'H: '+hRej.reason:''].filter(Boolean).join(' | ');
+    return [
+      list.length - i,
+      p.desc||'',
+      p.person||'',
+      p.site||'',
+      priLabel(p.priority||'normal'),
+      parseFloat(p.amount)||0,
+      official||'',
+      trans||'',
+      remaining||'',
+      groupLabel,
+      rejNote || (p.note||'')
+    ].map(esc).join(',');
+  });
+
+  const sections = [];
+  const addSection = (label, list, groupLabel) => {
+    if(!list.length) return;
+    const tot = list.reduce((a,p)=>a+(parseFloat(p.amount)||0),0);
+    sections.push(esc(label + ' — ' + list.length + ' khoản · ' + fmtVND(tot)));
+    sections.push(header);
+    sections.push(...toRows(list, groupLabel));
+    sections.push('');
+  };
+
+  addSection('VIỆC GẤP CẦN DUYỆT', urgent, 'Việc gấp');
+  addSection('CHỜ DUYỆT', pend, 'Chờ duyệt');
+  addSection('ĐÃ DUYỆT · CHỜ CHUYỂN', appd, 'Đã duyệt - chờ CK');
+  addSection('ĐÃ CHUYỂN TIỀN', hasTrans, 'Đã chuyển');
+  addSection('TỪ CHỐI', rej, 'Từ chối');
+
+  const now = new Date();
+  const dateStr = now.getDate().toString().padStart(2,'0') + '-' + (now.getMonth()+1).toString().padStart(2,'0') + '-' + now.getFullYear();
+  const csv = '﻿' + sections.join('\n'); // BOM UTF-8 để Excel đọc đúng tiếng Việt
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'TomTat_DuyetChi_' + dateStr + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('⬇️ Đã tải file Excel!');
 }
 
 // ── GOOGLE SHEETS ──
