@@ -3662,9 +3662,9 @@ function renderReportSummary(){
   };
 
   el.innerHTML = statCards
-    + makeTable('💸 Đã chuyển tiền', '#16a34a', '#f0fdf4', hasTrans, false, p=>getTotalTransferred(p))
-    + makeTable('✅ Đã duyệt · chờ chuyển', '#d97706', '#fffbeb', appd, false, p=>(getOfficialApprovedAmount(p)||0)-getTotalTransferred(p))
     + makeTable('⏳ Chờ duyệt', '#9333ea', '#fdf4ff', pend, false, p=>parseFloat(p.amount)||0)
+    + makeTable('✅ Đã duyệt · chờ chuyển', '#d97706', '#fffbeb', appd, false, p=>(getOfficialApprovedAmount(p)||0)-getTotalTransferred(p))
+    + makeTable('💸 Đã chuyển tiền', '#16a34a', '#f0fdf4', hasTrans, false, p=>getTotalTransferred(p))
     + makeTable('❌ Từ chối', '#dc2626', '#fff1f2', rej, true);
   attachReportDoubleTap(el);
 }
