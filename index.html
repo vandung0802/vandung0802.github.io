@@ -804,10 +804,19 @@ const firebaseConfig = {
   messagingSenderId: "366275914302",
   appId: "1:366275914302:web:c9d7aefd880fa0985c7f6f"
 };
-const APP_VERSION = '20260628-v14';
+const APP_VERSION = '20260630-v15';
 if(localStorage.getItem('app_version') !== APP_VERSION){
   localStorage.setItem('app_version', APP_VERSION);
 }
+// Tự kiểm tra bản mới sau 5 giây, không phụ thuộc SW
+setTimeout(()=>{
+  fetch(location.href, {cache:'no-store', method:'HEAD'}).then(r=>{
+    const v = r.headers.get('etag')||r.headers.get('last-modified')||'';
+    const stored = localStorage.getItem('_page_etag');
+    if(stored && stored !== v){ localStorage.setItem('_page_etag', v); location.reload(true); }
+    else { localStorage.setItem('_page_etag', v); }
+  }).catch(()=>{});
+}, 5000);
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
