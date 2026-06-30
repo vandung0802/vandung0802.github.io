@@ -3408,6 +3408,7 @@ function renderReportRejected(){
   if(!fp.length){ el.innerHTML='<div class="excel-table-empty">Không có phiếu nào bị từ chối.</div>'; return; }
   const sorted = fp.slice().sort((a,b)=>b.ts-a.ts);
   const rows = sorted.map((p,i)=>{
+    const stt = sorted.length - i;
     const dRej=p.rejectedByD, hRej=p.rejectedByH;
     const legD=!dRej&&!hRej&&p.rejectedBy==='D', legH=!dRej&&!hRej&&p.rejectedBy==='H';
     const dLine = (dRej||legD)?(dRej&&dRej.reason?`"${dRej.reason}"`:'—'):'';
@@ -3418,6 +3419,7 @@ function renderReportRejected(){
     const prCell=prv==='urgent'?'<span style="color:#b00000;font-weight:800">🔴 Gấp</span>':prv==='low'?'🟢 Chờ':'🟡 BT';
     const rejNote = [dLine?`D: ${dLine}`:'' , hLine?`H: ${hLine}`:''].filter(Boolean).join('<br>');
     return `<tr class="report-row-link" ondblclick="jumpToProposal('${p.id}')">
+      <td style="text-align:center;font-size:9px;color:var(--text-sub);vertical-align:middle;white-space:nowrap">${stt}</td>
       <td class="col-desc" style="font-weight:600">${p.desc}</td>
       <td class="col-person">${p.person||'—'}</td>
       <td class="col-site" style="color:#64748b">${(p.site||'—').replace('CT ','')}</td>
@@ -3431,7 +3433,7 @@ function renderReportRejected(){
     <div style="font-size:11px;font-weight:700;color:#dc2626;background:#fff1f2;padding:6px 10px;border-radius:8px 8px 0 0;border-left:3px solid #dc2626">❌ Từ chối — ${fp.length} phiếu · ${fmtVND(total)}</div>
     <div style="border-radius:0 0 8px 8px;overflow:hidden">
       <table class="report-table">
-        <thead><tr><th class="col-desc">Nội dung</th><th class="col-person">Người</th><th class="col-site">Công trình</th><th class="col-pri">Mức</th><th class="col-amt">Số tiền</th><th class="col-rej">Lý do từ chối</th></tr></thead>
+        <thead><tr><th style="text-align:center;width:18px">#</th><th class="col-desc">Nội dung</th><th class="col-person">Người</th><th class="col-site">Công trình</th><th class="col-pri">Mức</th><th class="col-amt">Số tiền</th><th class="col-rej">Lý do từ chối</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -3511,7 +3513,8 @@ function renderExcelTable(containerId, items, kind){
   const sorted = items.slice().sort((a,b)=> (kind==='done' ? getLastTransferTs(b)-getLastTransferTs(a) : b.ts-a.ts));
 
   const fmtShort = n => { if(!n) return '—'; const m=n/1000000; return m>=1?(m%1===0?m+'tr':(Math.round(m*100)/100)+'tr') : fmtVND(n); };
-  const rows = sorted.map(p=>{
+  const rows = sorted.map((p,i)=>{
+    const stt = sorted.length - i;
     const transferred = getTotalTransferred(p);
     const remaining = (getOfficialApprovedAmount(p)||parseFloat(p.amount)||0) - transferred;
     const lastTs = getLastTransferTs(p);
@@ -3529,6 +3532,7 @@ function renderExcelTable(containerId, items, kind){
     const dCell = kind==='pending' ? (dAmt>0?`<span style="color:var(--blue);font-weight:700;font-size:10px;word-break:normal">${fmtVND(dAmt)} ✓</span>`:'<span style="color:#aaa;font-size:9px">—</span>') : '';
     const hCell = kind==='pending' ? (hAmt>0?`<span style="color:#7c3aed;font-weight:700;font-size:10px;word-break:normal">${fmtVND(hAmt)} ✓</span>`:'<span style="color:#aaa;font-size:9px">—</span>') : '';
     return `<tr class="report-row-link" ondblclick="jumpToProposal('${p.id}')">
+      <td style="text-align:center;font-size:9px;color:var(--text-sub);vertical-align:middle;white-space:nowrap">${stt}</td>
       <td style="word-break:break-word;font-weight:600;font-size:9px;line-height:1.3;vertical-align:middle">${p.desc}</td>
       <td style="text-align:right;font-size:10px;line-height:1.3;vertical-align:middle">${amtLabel}</td>
       <td style="font-size:9px;color:var(--text-sub);white-space:normal;word-break:normal;vertical-align:middle">${p.person||'—'}</td>
@@ -3541,14 +3545,14 @@ function renderExcelTable(containerId, items, kind){
   const totalTransferred = kind==='done'
     ? sorted.reduce((a,p)=>a+getTotalTransferred(p),0)
     : sorted.reduce((a,p)=>{ const approved=getOfficialApprovedAmount(p)||parseFloat(p.amount)||0; return a+(approved-getTotalTransferred(p)); },0);
-  const colsPending = `<colgroup><col style="width:auto"><col style="width:76px"><col style="width:34px"><col style="width:30px"><col style="width:68px"><col style="width:68px"><col style="width:36px"><col style="width:30px"></colgroup>`;
-  const colsDone    = `<colgroup><col style="width:auto"><col style="width:82px"><col style="width:40px"><col style="width:52px"><col style="width:28px"></colgroup>`;
+  const colsPending = `<colgroup><col style="width:18px"><col style="width:auto"><col style="width:76px"><col style="width:34px"><col style="width:30px"><col style="width:68px"><col style="width:68px"><col style="width:36px"><col style="width:30px"></colgroup>`;
+  const colsDone    = `<colgroup><col style="width:18px"><col style="width:auto"><col style="width:82px"><col style="width:40px"><col style="width:52px"><col style="width:28px"></colgroup>`;
   el.innerHTML = `
     <div class="excel-table-wrap">
       <table class="excel-table excel-table-fixed">
         ${kind==='pending'?colsPending:colsDone}
         <thead><tr>
-          <th>Tên đề xuất</th><th style="text-align:right">${kind==='done'?'Đã chuyển':'Còn chuyển'}</th><th style="text-align:center">Người</th><th style="text-align:center">CT</th>
+          <th style="text-align:center">#</th><th>Tên đề xuất</th><th style="text-align:right">${kind==='done'?'Đã chuyển':'Còn chuyển'}</th><th style="text-align:center">Người</th><th style="text-align:center">CT</th>
           ${kind==='pending'?'<th style="text-align:center">D duyệt</th><th style="text-align:center">H duyệt</th><th style="text-align:center">Mức</th>':''}
           <th style="text-align:center">${kind==='done'?'Ngày CK':'Ngày'}</th>
         </tr></thead>
